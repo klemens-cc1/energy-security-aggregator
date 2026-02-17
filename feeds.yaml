@@ -1,0 +1,53 @@
+feeds:
+  # Energy Policy & Markets
+  - name: Reuters Energy
+    url: https://feeds.reuters.com/reuters/businessNews
+    category: Energy Markets
+
+  - name: S&P Global Commodity Insights
+    url: https://www.spglobal.com/commodityinsights/en/rss-feed/oil
+    category: Energy Markets
+
+  - name: Platts Oil
+    url: https://www.spglobal.com/commodityinsights/en/rss-feed/natural-gas
+    category: Energy Markets
+
+  # Geopolitics & Security
+  - name: Foreign Policy
+    url: https://foreignpolicy.com/feed/
+    category: Geopolitics
+
+  - name: War on the Rocks
+    url: https://warontherocks.com/feed/
+    category: Geopolitics
+
+  - name: The Diplomat
+    url: https://thediplomat.com/feed/
+    category: Geopolitics
+
+  # Renewables & Transition
+  - name: RenewableEnergyWorld
+    url: https://www.renewableenergyworld.com/feed/
+    category: Energy Transition
+
+  - name: PV Magazine
+    url: https://www.pv-magazine.com/feed/
+    category: Energy Transition
+
+  # Policy & Think Tanks
+  - name: IEA News
+    url: https://www.iea.org/rss/news.xml
+    category: Policy & Research
+
+  - name: Brookings Energy
+    url: https://www.brookings.edu/topic/energy-environment/feed/
+    category: Policy & Research
+
+  - name: Council on Foreign Relations
+    url: https://www.cfr.org/rss.xml
+    category: Policy & Research
+
+  # Nuclear
+  - name: World Nuclear News
+    url: https://www.world-nuclear-news.org/rss
+    category: Nuclear

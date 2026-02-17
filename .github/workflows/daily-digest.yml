@@ -1,0 +1,56 @@
+name: Daily Energy Security Digest
+
+on:
+  schedule:
+    # Runs every day at 6:00 AM UTC — adjust to your preferred time
+    # Use https://crontab.guru to calculate your timezone offset
+    - cron: "0 6 * * *"
+  workflow_dispatch: # allows manual trigger from GitHub UI
+
+jobs:
+  send-digest:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Restore article database
+        uses: actions/cache@v4
+        with:
+          path: articles.db
+          # Increment the cache version if you ever need to reset the DB
+          key: articles-db-v1-${{ github.run_id }}
+          restore-keys: |
+            articles-db-v1-
+
+      - name: Run aggregator
+        env:
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          FROM_ADDRESS: ${{ secrets.FROM_ADDRESS }}
+          RECIPIENT_EMAILS: ${{ secrets.RECIPIENT_EMAILS }}
+        run: python main.py
+
+      - name: Save article database
+        if: always()
+        uses: actions/cache/save@v4
+        with:
+          path: articles.db
+          key: articles-db-v1-${{ github.run_id }}
