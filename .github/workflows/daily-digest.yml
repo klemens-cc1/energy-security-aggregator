@@ -31,9 +31,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: articles.db
-          key: articles-db-v2-${{ github.run_id }}
+          key: articles-db-v3-${{ github.run_id }}
           restore-keys: |
-            articles-db-v2-
+            articles-db-v3-
 
       - name: Debug secrets (safe)
         env:
