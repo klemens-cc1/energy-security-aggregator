@@ -7,6 +7,7 @@ Run manually or via GitHub Actions cron.
 import logging
 from aggregator import aggregate
 from emailer import send_email
+from filter import filter_and_categorize
 from db import get_unsent_articles, mark_sent
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -22,13 +23,18 @@ def main():
     log.info(f"{len(articles)} unsent articles ready for digest.")
 
     if not articles:
-        log.info("Nothing to send today.")
+        log.info("Nothing to send this week.")
         return
 
-    # 3. Send the email digest
-    success = send_email(articles)
+    # 3. Run keyword filter and categorize
+    categorized = filter_and_categorize(articles)
+    for cat, items in categorized.items():
+        log.info(f"  {cat}: {len(items)} articles")
 
-    # 4. Mark articles as sent so they're never re-sent
+    # 4. Send the email digest
+    success = send_email(categorized)
+
+    # 5. Mark articles as sent so they're never re-sent
     if success:
         ids = [a["id"] for a in articles]
         mark_sent(ids)
