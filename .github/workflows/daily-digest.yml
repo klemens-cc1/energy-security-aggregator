@@ -2,10 +2,8 @@ name: Daily Energy Security Digest
 
 on:
   schedule:
-    # Runs every day at 6:00 AM UTC — adjust to your preferred time
-    # Use https://crontab.guru to calculate your timezone offset
     - cron: "0 6 * * *"
-  workflow_dispatch: # allows manual trigger from GitHub UI
+  workflow_dispatch:
 
 jobs:
   send-digest:
@@ -33,10 +31,16 @@ jobs:
         uses: actions/cache@v4
         with:
           path: articles.db
-          # Increment the cache version if you ever need to reset the DB
           key: articles-db-v2-${{ github.run_id }}
           restore-keys: |
             articles-db-v2-
+
+      - name: Debug secrets (safe)
+        env:
+          RECIPIENT_EMAILS: ${{ secrets.RECIPIENT_EMAILS }}
+        run: |
+          echo "Recipient length: ${#RECIPIENT_EMAILS}"
+          echo "Recipient count: $(echo $RECIPIENT_EMAILS | tr ',' '\n' | wc -l)"
 
       - name: Run aggregator
         env:
@@ -46,12 +50,6 @@ jobs:
           SMTP_PASS: ${{ secrets.SMTP_PASS }}
           FROM_ADDRESS: ${{ secrets.FROM_ADDRESS }}
           RECIPIENT_EMAILS: ${{ secrets.RECIPIENT_EMAILS }}
-          - name: Debug secrets (safe)
-        env:
-          RECIPIENT_EMAILS: ${{ secrets.RECIPIENT_EMAILS }}
-        run: |
-          echo "Recipient count: $(echo $RECIPIENT_EMAILS | tr ',' '\n' | wc -l)"
-          echo "Recipient length: ${#RECIPIENT_EMAILS}"
         run: python main.py
 
       - name: Save article database
@@ -59,4 +57,4 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: articles.db
-          key: articles-db-v1-${{ github.run_id }}
+          key: articles-db-v2-${{ github.run_id }}
