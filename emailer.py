@@ -9,11 +9,11 @@ from email.mime.text import MIMEText
 log = logging.getLogger(__name__)
 
 CATEGORY_ICONS = {
-    "Energy Markets": "⚡",
-    "Geopolitics": "🌍",
-    "Energy Transition": "🌱",
-    "Policy & Research": "📋",
+    "AI & Data Centers": "🤖",
+    "Renewables": "🌱",
     "Nuclear": "☢️",
+    "Hydrocarbons": "🛢️",
+    "Georgia & Southeast US": "🍑",
     "General": "📰",
 }
 
@@ -25,11 +25,12 @@ def group_by_category(articles: list[dict]) -> dict:
     return dict(grouped)
 
 
-def render_html(articles: list[dict], date_str: str) -> str:
-    grouped = group_by_category(articles)
+def render_html(articles: dict, date_str: str) -> str:
+    grouped = articles  # already categorized and ordered
 
+    total = sum(len(v) for v in grouped.values())
     category_blocks = ""
-    for category, items in sorted(grouped.items()):
+    for category, items in grouped.items():
         icon = CATEGORY_ICONS.get(category, "📰")
         rows = ""
         for a in items:
@@ -58,7 +59,6 @@ def render_html(articles: list[dict], date_str: str) -> str:
           </td>
         </tr>"""
 
-    total = len(articles)
     return f"""<!DOCTYPE html>
 <html>
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
@@ -73,7 +73,7 @@ def render_html(articles: list[dict], date_str: str) -> str:
         <tr>
           <td style="background: #1a1a2e; padding: 28px 36px;">
             <p style="margin: 0; color: #e63946; font-size: 11px; font-weight: 700;
-                       text-transform: uppercase; letter-spacing: 2px;">Daily Digest</p>
+                       text-transform: uppercase; letter-spacing: 2px;">Weekly Digest</p>
             <h1 style="margin: 6px 0 0 0; color: #ffffff; font-size: 22px; font-weight: 400;">
               Energy Security Briefing
             </h1>
@@ -106,10 +106,10 @@ def render_html(articles: list[dict], date_str: str) -> str:
 </html>"""
 
 
-def render_plain(articles: list[dict], date_str: str) -> str:
-    grouped = group_by_category(articles)
-    lines = [f"ENERGY SECURITY BRIEFING — {date_str}", "=" * 50, ""]
-    for category, items in sorted(grouped.items()):
+def render_plain(articles: dict, date_str: str) -> str:
+    grouped = articles  # already categorized
+    lines = [f"ENERGY SECURITY WEEKLY BRIEFING — {date_str}", "=" * 50, ""]
+    for category, items in grouped.items():
         lines.append(f"[ {category.upper()} ]")
         for a in items:
             lines.append(f"  • {a['title']}")
@@ -120,7 +120,7 @@ def render_plain(articles: list[dict], date_str: str) -> str:
     return "\n".join(lines)
 
 
-def send_email(articles: list[dict]) -> bool:
+def send_email(articles: dict) -> bool:
     """Send the digest email. Returns True on success."""
     if not articles:
         log.info("No new articles — skipping email.")
@@ -136,7 +136,7 @@ def send_email(articles: list[dict]) -> bool:
     recipients = [r.strip() for r in os.environ["RECIPIENT_EMAILS"].split(",")]
 
     date_str = datetime.now().strftime("%A, %B %-d, %Y")
-    subject = f"Energy Security Briefing — {date_str}"
+    subject = f"Energy Security Weekly — {date_str}"
 
     msg = MIMEMultipart("alternative")
     msg["Subject"] = subject
