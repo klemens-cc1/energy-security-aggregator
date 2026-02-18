@@ -34,9 +34,9 @@ jobs:
         with:
           path: articles.db
           # Increment the cache version if you ever need to reset the DB
-          key: articles-db-v1-${{ github.run_id }}
+          key: articles-db-v2-${{ github.run_id }}
           restore-keys: |
-            articles-db-v1-
+            articles-db-v2-
 
       - name: Run aggregator
         env:
