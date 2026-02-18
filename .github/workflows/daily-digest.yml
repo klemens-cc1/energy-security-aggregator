@@ -46,6 +46,12 @@ jobs:
           SMTP_PASS: ${{ secrets.SMTP_PASS }}
           FROM_ADDRESS: ${{ secrets.FROM_ADDRESS }}
           RECIPIENT_EMAILS: ${{ secrets.RECIPIENT_EMAILS }}
+          - name: Debug secrets (safe)
+        env:
+          RECIPIENT_EMAILS: ${{ secrets.RECIPIENT_EMAILS }}
+        run: |
+          echo "Recipient count: $(echo $RECIPIENT_EMAILS | tr ',' '\n' | wc -l)"
+          echo "Recipient length: ${#RECIPIENT_EMAILS}"
         run: python main.py
 
       - name: Save article database
