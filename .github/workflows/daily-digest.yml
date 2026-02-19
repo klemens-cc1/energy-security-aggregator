@@ -31,9 +31,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: articles.db
-          key: articles-db-v6-${{ github.run_id }}
+          key: articles-db-v7-${{ github.run_id }}
           restore-keys: |
-            articles-db-v6-
+            articles-db-v7-
 
       - name: Debug secrets (safe)
         env:
@@ -41,6 +41,9 @@ jobs:
         run: |
           echo "Recipient length: ${#RECIPIENT_EMAILS}"
           echo "Recipient count: $(echo $RECIPIENT_EMAILS | tr ',' '\n' | wc -l)"
+
+      - name: Confirm filter loaded
+        run: python -c "from filter import filter_and_categorize; print('filter OK')"
 
       - name: Run aggregator
         env:
@@ -57,4 +60,4 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: articles.db
-          key: articles-db-v2-${{ github.run_id }}
+          key: articles-db-v7-${{ github.run_id }}
