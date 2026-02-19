@@ -28,9 +28,6 @@ feeds:
   - name: Think GeoEnergy
     url: https://www.thinkgeoenergy.com/feed/
 
-  - name: IRENA News
-    url: https://www.irena.org/rss/irena/News
-
   # Nuclear
   - name: World Nuclear News
     url: https://www.world-nuclear-news.org/rss
@@ -41,37 +38,12 @@ feeds:
   - name: ANS Nuclear Newswire
     url: https://www.ans.org/news/feed/
 
-  - name: IAEA News
-    url: https://www.iaea.org/feeds/pressreleases.xml
-
-  - name: NRC News
-    url: https://www.nrc.gov/reading-rm/doc-collections/news/rss/nrc-news.rss
-
   # Hydrocarbons
   - name: OilPrice.com
     url: https://oilprice.com/rss/main
 
-  - name: Rigzone
-    url: https://www.rigzone.com/news/rss.asp
-
-  - name: Oil & Gas Journal
-    url: https://www.ogj.com/rss/articles.rss
-
   - name: EIA Today in Energy
     url: https://www.eia.gov/rss/todayinenergy.xml
-
-  - name: Natural Gas World
-    url: https://www.naturalgasworld.com/feed
-
-  # Georgia & Southeast US
-  - name: Energy News Network Southeast
-    url: https://energynews.us/category/news/southeast/feed/
-
-  - name: Southern Alliance for Clean Energy
-    url: https://cleanenergy.org/feed/
-
-  - name: Duke Energy News
-    url: https://news.duke-energy.com/rss/news.rss
 
   # AI & Data Centers
   - name: Data Center Dynamics
@@ -82,6 +54,3 @@ feeds:
 
   - name: Data Center Post
     url: https://datacenterpost.com/feed/
-
-  - name: TechTarget Data Center
-    url: https://www.techtarget.com/searchdatacenter/rss
