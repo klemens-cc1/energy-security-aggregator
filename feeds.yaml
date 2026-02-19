@@ -1,4 +1,5 @@
 feeds:
+  # Geopolitics & General Energy
   - name: Foreign Policy
     url: https://foreignpolicy.com/feed/
 
@@ -8,11 +9,79 @@ feeds:
   - name: The Diplomat
     url: https://thediplomat.com/feed/
 
+  # Renewables
   - name: RenewableEnergyWorld
     url: https://www.renewableenergyworld.com/feed/
 
   - name: PV Magazine
     url: https://www.pv-magazine.com/feed/
 
+  - name: CleanTechnica
+    url: https://cleantechnica.com/feed/
+
+  - name: Offshore Wind Biz
+    url: https://www.offshorewind.biz/feed/
+
+  - name: Energy Storage News
+    url: https://www.energy-storage.news/feed/
+
+  - name: Think GeoEnergy
+    url: https://www.thinkgeoenergy.com/feed/
+
+  - name: IRENA News
+    url: https://www.irena.org/rss/irena/News
+
+  # Nuclear
   - name: World Nuclear News
     url: https://www.world-nuclear-news.org/rss
+
+  - name: Neutron Bytes
+    url: https://neutronbytes.com/feed/
+
+  - name: ANS Nuclear Newswire
+    url: https://www.ans.org/news/feed/
+
+  - name: IAEA News
+    url: https://www.iaea.org/feeds/pressreleases.xml
+
+  - name: NRC News
+    url: https://www.nrc.gov/reading-rm/doc-collections/news/rss/nrc-news.rss
+
+  # Hydrocarbons
+  - name: OilPrice.com
+    url: https://oilprice.com/rss/main
+
+  - name: Rigzone
+    url: https://www.rigzone.com/news/rss.asp
+
+  - name: Oil & Gas Journal
+    url: https://www.ogj.com/rss/articles.rss
+
+  - name: EIA Today in Energy
+    url: https://www.eia.gov/rss/todayinenergy.xml
+
+  - name: Natural Gas World
+    url: https://www.naturalgasworld.com/feed
+
+  # Georgia & Southeast US
+  - name: Energy News Network Southeast
+    url: https://energynews.us/category/news/southeast/feed/
+
+  - name: Southern Alliance for Clean Energy
+    url: https://cleanenergy.org/feed/
+
+  - name: Duke Energy News
+    url: https://news.duke-energy.com/rss/news.rss
+
+  # AI & Data Centers
+  - name: Data Center Dynamics
+    url: https://www.datacenterdynamics.com/en/rss/
+
+  - name: Data Center Knowledge
+    url: https://www.datacenterknowledge.com/rss.xml
+
+  - name: Data Center Post
+    url: https://datacenterpost.com/feed/
+
+  - name: TechTarget Data Center
+    url: https://www.techtarget.com/searchdatacenter/rss
