@@ -59,7 +59,6 @@ CATEGORY_ORDER = [
     "Nuclear",
     "Hydrocarbons",
     "Georgia & Southeast US",
-    "General",
 ]
 
 
@@ -96,5 +95,5 @@ def filter_and_categorize(articles: list[dict]) -> dict[str, list[dict]]:
                 result[cat] = []
             result[cat].append(article)
 
-    # Remove empty categories
-    return {k: v for k, v in result.items() if v}
+    # Cap each category at 10 articles and remove empty categories
+    return {k: v[:10] for k, v in result.items() if v}
