@@ -2,16 +2,17 @@
 # Keyword-based article categorizer.
 # Articles are matched against each category's keywords (case-insensitive, title only).
 # An article can appear in multiple categories if it matches more than one.
-# Articles that match nothing go into "General" as a catch-all for later AI review.
+# Articles that match nothing are dropped entirely.
 
 CATEGORIES = {
     "AI & Data Centers": [
-        "artificial intelligence", " ai ", "machine learning", "deep learning",
+        "artificial intelligence", "machine learning", "deep learning",
         "data center", "datacenter", "data centre", "hyperscaler",
         "gpu", "nvidia", "microsoft azure", "google cloud", "amazon aws",
         "cloud computing", "llm", "large language model", "generative ai",
         "chatgpt", "openai", "anthropic", "meta ai",
-        "power demand", "compute", "inference", "training cluster",
+        "ai energy", "ai power", "ai electricity", "ai infrastructure",
+        "compute", "training cluster",
     ],
     "Renewables": [
         "solar", "wind", "hydro", "hydropower", "hydroelectric",
@@ -22,11 +23,15 @@ CATEGORIES = {
         "pumped hydro", "tidal", "wave energy",
     ],
     "Nuclear": [
-        "nuclear", "reactor", "uranium", "enrichment", "fission",
-        "fusion", "small modular reactor", "smr", "pressurized water",
-        "boiling water reactor", "spent fuel", "nuclear waste",
+        "nuclear power", "nuclear energy", "nuclear plant", "nuclear reactor",
+        "nuclear fuel", "nuclear waste", "nuclear grid", "nuclear capacity",
+        "nuclear generation", "nuclear station", "nuclear industry",
+        "reactor", "uranium", "enrichment", "fission",
+        "fusion energy", "fusion reactor", "fusion power",
+        "small modular reactor", "smr", "pressurized water reactor",
+        "boiling water reactor", "spent fuel",
         "vogtle", "westinghouse", "electricite de france", "edf",
-        "iaea", "nonproliferation", "nuclear power plant",
+        "nonproliferation",
     ],
     "Hydrocarbons": [
         "natural gas", "lng", "liquefied natural gas",
@@ -70,7 +75,7 @@ CATEGORY_ORDER = [
 def categorize(article: dict) -> list[str]:
     """
     Return a list of category names this article belongs to.
-    Falls back to ["General"] if no keywords match.
+    Returns empty list if no keywords match (article will be dropped).
     """
     title = article.get("title", "").lower()
     # Pad with spaces so word-boundary checks work at start/end of title
@@ -83,7 +88,7 @@ def categorize(article: dict) -> list[str]:
                 matched.append(category)
                 break  # one match per category is enough
 
-    return matched if matched else []
+    return matched
 
 
 def filter_and_categorize(articles: list[dict]) -> dict[str, list[dict]]:
