@@ -28,10 +28,7 @@ feeds:
   - name: Think GeoEnergy
     url: https://www.thinkgeoenergy.com/feed/
 
-  - name: Canary Media
-    url: https://www.canarymedia.com/rss.xml
-
-  - name: Grist Energy
+   - name: Grist Energy
     url: https://grist.org/energy/feed/
 
   # Nuclear
@@ -55,10 +52,7 @@ feeds:
   - name: The Current GA
     url: https://thecurrentga.org/feed/
 
-  - name: Canary Media Southeast
-    url: https://www.canarymedia.com/articles/southeast/feed
-
-  # AI & Data Centers
+   # AI & Data Centers
   - name: Data Center Dynamics
     url: https://www.datacenterdynamics.com/en/rss/
 
