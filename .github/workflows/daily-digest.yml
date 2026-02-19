@@ -27,21 +27,6 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Restore article database
-        uses: actions/cache@v4
-        with:
-          path: articles.db
-          key: articles-db-v7-${{ github.run_id }}
-          restore-keys: |
-            articles-db-v7-
-
-      - name: Debug secrets (safe)
-        env:
-          RECIPIENT_EMAILS: ${{ secrets.RECIPIENT_EMAILS }}
-        run: |
-          echo "Recipient length: ${#RECIPIENT_EMAILS}"
-          echo "Recipient count: $(echo $RECIPIENT_EMAILS | tr ',' '\n' | wc -l)"
-
       - name: Confirm filter loaded
         run: python -c "from filter import filter_and_categorize; print('filter OK')"
 
@@ -54,10 +39,3 @@ jobs:
           FROM_ADDRESS: ${{ secrets.FROM_ADDRESS }}
           RECIPIENT_EMAILS: ${{ secrets.RECIPIENT_EMAILS }}
         run: python main.py
-
-      - name: Save article database
-        if: always()
-        uses: actions/cache/save@v4
-        with:
-          path: articles.db
-          key: articles-db-v7-${{ github.run_id }}
