@@ -38,7 +38,7 @@ def is_recent(published: datetime | None) -> bool:
 def fetch_feed(feed_config: dict) -> list[dict]:
     name = feed_config["name"]
     url = feed_config["url"]
-    category = feed_config.get("category", "General")
+    category = ""
     articles = []
 
     log.info(f"Fetching: {name}")
