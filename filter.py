@@ -78,7 +78,7 @@ def categorize(article: dict) -> list[str]:
                 matched.append(category)
                 break  # one match per category is enough
 
-    return matched if matched else ["General"]
+    return matched if matched else []
 
 
 def filter_and_categorize(articles: list[dict]) -> dict[str, list[dict]]:
