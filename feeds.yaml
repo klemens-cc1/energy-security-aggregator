@@ -45,12 +45,6 @@ feeds:
   - name: EIA Today in Energy
     url: https://www.eia.gov/rss/todayinenergy.xml
 
-  # AI & Data Centers
-  - name: Data Center Dynamics
-    url: https://www.datacenterdynamics.com/en/rss/
-
-  - name: Data Center Knowledge
-    url: https://www.datacenterknowledge.com/rss.xml
-
-  - name: Data Center Post
-    url: https://datacenterpost.com/feed/
+  # Georgia & Southeast US
+  - name: WABE Energy
+    url: https://www.wabe.org/energy/f
