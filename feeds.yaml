@@ -28,6 +28,12 @@ feeds:
   - name: Think GeoEnergy
     url: https://www.thinkgeoenergy.com/feed/
 
+  - name: Canary Media
+    url: https://www.canarymedia.com/rss.xml
+
+  - name: Grist Energy
+    url: https://grist.org/energy/feed/
+
   # Nuclear
   - name: World Nuclear News
     url: https://www.world-nuclear-news.org/rss
@@ -46,5 +52,18 @@ feeds:
     url: https://www.eia.gov/rss/todayinenergy.xml
 
   # Georgia & Southeast US
-  - name: WABE Energy
-    url: https://www.wabe.org/energy/f
+  - name: The Current GA
+    url: https://thecurrentga.org/feed/
+
+  - name: Canary Media Southeast
+    url: https://www.canarymedia.com/articles/southeast/feed
+
+  # AI & Data Centers
+  - name: Data Center Dynamics
+    url: https://www.datacenterdynamics.com/en/rss/
+
+  - name: Data Center Knowledge
+    url: https://www.datacenterknowledge.com/rss.xml
+
+  - name: Data Center Post
+    url: https://datacenterpost.com/feed/
