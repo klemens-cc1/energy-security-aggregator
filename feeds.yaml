@@ -28,7 +28,7 @@ feeds:
   - name: Think GeoEnergy
     url: https://www.thinkgeoenergy.com/feed/
 
-   - name: Grist Energy
+  - name: Grist Energy
     url: https://grist.org/energy/feed/
 
   # Nuclear
@@ -48,16 +48,4 @@ feeds:
   - name: EIA Today in Energy
     url: https://www.eia.gov/rss/todayinenergy.xml
 
-  # Georgia & Southeast US
-  - name: The Current GA
-    url: https://thecurrentga.org/feed/
-
-   # AI & Data Centers
-  - name: Data Center Dynamics
-    url: https://www.datacenterdynamics.com/en/rss/
-
-  - name: Data Center Knowledge
-    url: https://www.datacenterknowledge.com/rss.xml
-
-  - name: Data Center Post
-    url: https://datacenterpost.com/feed/
+  # Georgia & S
