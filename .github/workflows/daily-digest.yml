@@ -39,3 +39,33 @@ jobs:
           FROM_ADDRESS: ${{ secrets.FROM_ADDRESS }}
           RECIPIENT_EMAILS: ${{ secrets.RECIPIENT_EMAILS }}
         run: python main.py
+
+      - name: Notify on failure
+        if: failure()
+        env:
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          FROM_ADDRESS: ${{ secrets.FROM_ADDRESS }}
+          RECIPIENT_EMAILS: ${{ secrets.RECIPIENT_EMAILS }}
+        run: |
+          python - <<'EOF'
+          import os, smtplib
+          from email.mime.text import MIMEText
+          smtp_host = os.environ["SMTP_HOST"]
+          smtp_port = int(os.environ.get("SMTP_PORT", 587))
+          smtp_user = os.environ["SMTP_USER"]
+          smtp_pass = os.environ["SMTP_PASS"]
+          from_addr = os.environ.get("FROM_ADDRESS", smtp_user)
+          recipients = [r.strip() for r in os.environ["RECIPIENT_EMAILS"].split(",")]
+          msg = MIMEText("The Energy Security Aggregator workflow failed. Check GitHub Actions for details:\nhttps://github.com/klemens-cc1/energy-security-aggregator/actions")
+          msg["Subject"] = "⚠️ Energy Security Digest — workflow failed"
+          msg["From"] = from_addr
+          msg["To"] = ", ".join(recipients)
+          with smtplib.SMTP(smtp_host, smtp_port) as s:
+              s.starttls()
+              s.login(smtp_user, smtp_pass)
+              s.sendmail(from_addr, recipients, msg.as_string())
+          print("Failure notification sent.")
+          EOF
