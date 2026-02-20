@@ -168,7 +168,7 @@ def ai_filter(categorized: dict) -> dict:
         return category, article, score
 
     results = []
-    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
         futures = {executor.submit(score_item, item): item for item in to_score}
         for future in concurrent.futures.as_completed(futures):
             try:
