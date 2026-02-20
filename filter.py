@@ -1,21 +1,17 @@
 from difflib import SequenceMatcher
+import logging
+import os
+import concurrent.futures
 
+log = logging.getLogger(__name__)
 
-def similarity(a: str, b: str) -> float:
-    return SequenceMatcher(None, a.lower(), b.lower()).ratio()
-
-
-def deduplicate(articles: list[dict], threshold: float = 0.85) -> list[dict]:
-    seen = []
-    unique = []
-    for article in articles:
-        title = article["title"]
-        is_duplicate = any(similarity(title, seen_title) >= threshold for seen_title in seen)
-        if not is_duplicate:
-            seen.append(title)
-            unique.append(article)
-    return unique
-
+CATEGORY_DESCRIPTIONS = {
+    "AI & Data Centers": "artificial intelligence, machine learning, data centers, GPU infrastructure, cloud computing, and their energy/power demands",
+    "Renewables": "solar, wind, hydro, geothermal, tidal, battery storage, and other renewable energy sources and projects",
+    "Nuclear": "nuclear power plants, reactors, uranium, SMRs, fusion energy, nuclear fuel, and the nuclear energy industry",
+    "Hydrocarbons": "oil, natural gas, LNG, coal, petroleum, pipelines, refineries, fossil fuels, and hydrocarbon markets",
+    "Georgia & Southeast US": "energy news specific to Georgia, Alabama, Florida, Tennessee, South Carolina, North Carolina, or the broader southeastern US energy sector including utilities like Georgia Power, Southern Company, Duke Energy, TVA, and Entergy",
+}
 
 CATEGORIES = {
     "AI & Data Centers": [
@@ -60,6 +56,10 @@ CATEGORIES = {
         "liquefied petroleum", "propane", "natural gas pipeline",
     ],
     "Georgia & Southeast US": [
+        "georgia", "atlanta", "savannah", "augusta",
+        "alabama", "florida", "tennessee", "south carolina", "north carolina",
+        "mississippi", "louisiana", "arkansas", "kentucky",
+        "southeastern", "southeast us", "appalachian",
         "georgia power", "georgia energy", "georgia solar",
         "georgia nuclear", "georgia grid", "georgia utility",
         "georgia public service commission", "georgia psc",
@@ -68,10 +68,8 @@ CATEGORIES = {
         "duke energy", "dominion energy", "entergy",
         "southeastern energy", "southeast energy",
         "southeast power", "southeast grid",
-        "southeast electricity", "southeast utility",
-        "appalachian power", "florida power", "gulf power",
-        "alabama power", "mississippi power",
-        "atlanta energy", "savannah energy",
+        "appalachian power", "alabama power", "mississippi power",
+        "gulf coast energy", "gulf power",
     ],
 }
 
@@ -82,6 +80,25 @@ CATEGORY_ORDER = [
     "Hydrocarbons",
     "Georgia & Southeast US",
 ]
+
+AI_RELEVANCE_THRESHOLD = 6
+AI_SCORE_LIMIT = 150
+
+
+def similarity(a: str, b: str) -> float:
+    return SequenceMatcher(None, a.lower(), b.lower()).ratio()
+
+
+def deduplicate(articles: list[dict], threshold: float = 0.85) -> list[dict]:
+    seen = []
+    unique = []
+    for article in articles:
+        title = article["title"]
+        is_duplicate = any(similarity(title, t) >= threshold for t in seen)
+        if not is_duplicate:
+            seen.append(title)
+            unique.append(article)
+    return unique
 
 
 def categorize(article: dict) -> list[str]:
@@ -96,12 +113,93 @@ def categorize(article: dict) -> list[str]:
     return matched
 
 
-def filter_and_categorize(articles: list[dict]) -> dict[str, list[dict]]:
-    result: dict[str, list[dict]] = {cat: [] for cat in CATEGORY_ORDER}
+def score_article(title: str, category: str, client) -> int:
+    description = CATEGORY_DESCRIPTIONS.get(category, category)
+    prompt = (
+        f'Rate how relevant this news article title is to the topic of "{description}" '
+        f'for an energy security newsletter. '
+        f'Consider only energy, power, infrastructure, and policy relevance. '
+        f'Reply with ONLY a single integer from 1 to 10. '
+        f'1 = completely irrelevant, 10 = highly relevant.\n\n'
+        f'Title: {title}'
+    )
+    try:
+        response = client.chat.completions.create(
+            model="llama3-8b-8192",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=5,
+            temperature=0,
+        )
+        text = response.choices[0].message.content.strip()
+        score = int(''.join(filter(str.isdigit, text))[:2])
+        return min(max(score, 1), 10)
+    except Exception as e:
+        log.warning(f"AI scoring failed for '{title}': {e}")
+        return 5
+
+
+def ai_filter(categorized: dict) -> dict:
+    api_key = os.environ.get("GROQ_API_KEY")
+    if not api_key:
+        log.warning("GROQ_API_KEY not set — skipping AI filter.")
+        return categorized
+
+    try:
+        from groq import Groq
+        client = Groq(api_key=api_key)
+    except ImportError:
+        log.warning("groq package not installed — skipping AI filter.")
+        return categorized
+
+    to_score = []
+    for category, articles in categorized.items():
+        for article in articles:
+            to_score.append((category, article))
+
+    if len(to_score) > AI_SCORE_LIMIT:
+        log.warning(f"Capping AI scoring at {AI_SCORE_LIMIT} articles (had {len(to_score)})")
+        to_score = to_score[:AI_SCORE_LIMIT]
+
+    log.info(f"AI scoring {len(to_score)} articles via Groq...")
+
+    def score_item(item):
+        category, article = item
+        score = score_article(article["title"], category, client)
+        return category, article, score
+
+    results = []
+    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+        futures = {executor.submit(score_item, item): item for item in to_score}
+        for future in concurrent.futures.as_completed(futures):
+            try:
+                results.append(future.result())
+            except Exception as e:
+                log.warning(f"Scoring thread failed: {e}")
+
+    filtered: dict = {cat: [] for cat in CATEGORY_ORDER}
+    passed = 0
+    dropped = 0
+    for category, article, score in results:
+        if score >= AI_RELEVANCE_THRESHOLD:
+            filtered[category].append(article)
+            passed += 1
+        else:
+            dropped += 1
+            log.info(f"  DROPPED (score {score}): {article['title'][:80]}")
+
+    log.info(f"AI filter: {passed} passed, {dropped} dropped.")
+    return {k: v[:10] for k, v in filtered.items() if v}
+
+
+def filter_and_categorize(articles: list[dict]) -> dict:
+    result: dict = {cat: [] for cat in CATEGORY_ORDER}
     for article in articles:
-        categories = categorize(article)
-        for cat in categories:
-            if cat not in result:
-                result[cat] = []
-            result[cat].append(article)
-    return {k: v[:10] for k, v in result.items() if v}
+        for cat in categorize(article):
+            result.setdefault(cat, []).append(article)
+
+    result = {k: v for k, v in result.items() if v}
+    total = sum(len(v) for v in result.values())
+    log.info(f"Keyword filter: {total} article slots across {len(result)} categories.")
+
+    result = ai_filter(result)
+    return result
