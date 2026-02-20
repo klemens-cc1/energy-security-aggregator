@@ -2,17 +2,16 @@
 # Keyword-based article categorizer.
 # Articles are matched against each category's keywords (case-insensitive, title only).
 # An article can appear in multiple categories if it matches more than one.
-# Articles that match nothing are dropped entirely.
+# Articles that match nothing go into "General" as a catch-all for later AI review.
 
 CATEGORIES = {
     "AI & Data Centers": [
-        "artificial intelligence", "machine learning", "deep learning",
+        "artificial intelligence", " ai ", "machine learning", "deep learning",
         "data center", "datacenter", "data centre", "hyperscaler",
         "gpu", "nvidia", "microsoft azure", "google cloud", "amazon aws",
         "cloud computing", "llm", "large language model", "generative ai",
         "chatgpt", "openai", "anthropic", "meta ai",
-        "ai energy", "ai power", "ai electricity", "ai infrastructure",
-        "compute", "training cluster",
+        "power demand", "compute", "inference", "training cluster",
     ],
     "Renewables": [
         "solar", "wind", "hydro", "hydropower", "hydroelectric",
@@ -23,42 +22,28 @@ CATEGORIES = {
         "pumped hydro", "tidal", "wave energy",
     ],
     "Nuclear": [
-        "nuclear power", "nuclear energy", "nuclear plant", "nuclear reactor",
-        "nuclear fuel", "nuclear waste", "nuclear grid", "nuclear capacity",
-        "nuclear generation", "nuclear station", "nuclear industry",
-        "reactor", "uranium", "enrichment", "fission",
-        "fusion energy", "fusion reactor", "fusion power",
-        "small modular reactor", "smr", "pressurized water reactor",
-        "boiling water reactor", "spent fuel",
+        "nuclear", "reactor", "uranium", "enrichment", "fission",
+        "fusion", "small modular reactor", "smr", "pressurized water",
+        "boiling water reactor", "spent fuel", "nuclear waste",
         "vogtle", "westinghouse", "electricite de france", "edf",
-        "nonproliferation",
+        "iaea", "nonproliferation", "nuclear power plant",
     ],
     "Hydrocarbons": [
-        "natural gas", "lng", "liquefied natural gas",
-        "oil pipeline", "gas pipeline", "crude oil", "petroleum",
-        "oil refinery", "refining", "gasoline", "diesel fuel",
-        "fossil fuel", "coal mine", "coal plant", "coal power",
-        "shale gas", "fracking", "hydraulic fracturing",
-        "offshore drilling", "opec", "oilfield", "oil field",
-        "oil price", "gas price", "oil production", "gas production",
-        "barrel of oil", "brent crude", "wti crude",
-        "petrochemical", "oil major", "oil company",
-        "exxon", "chevron", "bp ", "shell oil", "totalenergies",
-        "liquefied petroleum", "propane", "natural gas pipeline",
+        "natural gas", "lng", "liquefied natural gas", "pipeline",
+        "coal", "oil", "crude", "petroleum", "refinery", "refining",
+        "gasoline", "diesel", "fossil fuel", "carbon", "methane",
+        "shale", "fracking", "hydraulic fracturing", "offshore drilling",
+        "opec", "oilfield", "gas field", "barrel", "btu",
+        "petrochemical", "propane", "ethane", "ngl",
     ],
     "Georgia & Southeast US": [
-        "georgia power", "georgia energy", "georgia solar",
-        "georgia nuclear", "georgia grid", "georgia utility",
-        "georgia public service commission", "georgia psc",
-        "plant vogtle", "southern company",
-        "tennessee valley authority", "tva",
-        "duke energy", "dominion energy", "entergy",
-        "southeastern energy", "southeast energy",
-        "southeast power", "southeast grid",
-        "southeast electricity", "southeast utility",
-        "appalachian power", "florida power", "gulf power",
-        "alabama power", "mississippi power",
-        "atlanta energy", "savannah energy",
+        "georgia", "atlanta", "savannah", "augusta",
+        "alabama", "florida", "tennessee", "south carolina", "north carolina",
+        "mississippi", "louisiana", "arkansas", "kentucky",
+        "southeastern", "southeast us", "appalachian",
+        "southern company", "georgia power", "duke energy", "dominion energy",
+        "tennessee valley authority", "tva", "entergy",
+        "gulf coast", "port of savannah",
     ],
 }
 
@@ -69,13 +54,14 @@ CATEGORY_ORDER = [
     "Nuclear",
     "Hydrocarbons",
     "Georgia & Southeast US",
+    "General",
 ]
 
 
 def categorize(article: dict) -> list[str]:
     """
     Return a list of category names this article belongs to.
-    Returns empty list if no keywords match (article will be dropped).
+    Falls back to ["General"] if no keywords match.
     """
     title = article.get("title", "").lower()
     # Pad with spaces so word-boundary checks work at start/end of title
@@ -88,7 +74,30 @@ def categorize(article: dict) -> list[str]:
                 matched.append(category)
                 break  # one match per category is enough
 
-    return matched
+    return matched if matched else ["General"]
+
+
+from difflib import SequenceMatcher
+
+
+def similarity(a: str, b: str) -> float:
+    return SequenceMatcher(None, a.lower(), b.lower()).ratio()
+
+
+def deduplicate(articles: list[dict], threshold: float = 0.75) -> list[dict]:
+    """
+    Remove near-duplicate articles based on title similarity.
+    Keeps the first occurrence, drops subsequent similar titles.
+    """
+    seen = []
+    unique = []
+    for article in articles:
+        title = article["title"]
+        is_duplicate = any(similarity(title, seen_title) >= threshold for seen_title in seen)
+        if not is_duplicate:
+            seen.append(title)
+            unique.append(article)
+    return unique
 
 
 def filter_and_categorize(articles: list[dict]) -> dict[str, list[dict]]:
@@ -105,5 +114,5 @@ def filter_and_categorize(articles: list[dict]) -> dict[str, list[dict]]:
                 result[cat] = []
             result[cat].append(article)
 
-    # Cap each category at 10 articles and remove empty categories
-    return {k: v[:10] for k, v in result.items() if v}
+    # Remove empty categories
+    return {k: v for k, v in result.items() if v}
