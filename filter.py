@@ -2,6 +2,7 @@ from difflib import SequenceMatcher
 import logging
 import os
 import concurrent.futures
+import time
 
 log = logging.getLogger(__name__)
 
@@ -124,6 +125,7 @@ def score_article(title: str, category: str, client) -> int:
         f'Title: {title}'
     )
     try:
+        time.sleep(0.5)
         response = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=[{"role": "user", "content": prompt}],
