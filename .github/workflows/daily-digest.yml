@@ -38,6 +38,7 @@ jobs:
           SMTP_PASS: ${{ secrets.SMTP_PASS }}
           FROM_ADDRESS: ${{ secrets.FROM_ADDRESS }}
           RECIPIENT_EMAILS: ${{ secrets.RECIPIENT_EMAILS }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         run: python main.py
 
       - name: Notify on failure
