@@ -84,7 +84,7 @@ def similarity(a: str, b: str) -> float:
     return SequenceMatcher(None, a.lower(), b.lower()).ratio()
 
 
-def deduplicate(articles: list[dict], threshold: float = 0.75) -> list[dict]:
+def deduplicate(articles: list[dict], threshold: float = 0.85) -> list[dict]:
     """
     Remove near-duplicate articles based on title similarity.
     Keeps the first occurrence, drops subsequent similar titles.
