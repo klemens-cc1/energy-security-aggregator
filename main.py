@@ -26,7 +26,12 @@ def main():
         log.info("Nothing to send this week.")
         return
 
-    # 3. Run keyword filter and categorize
+    # 3. Deduplicate articles by title similarity
+    from filter import deduplicate
+    articles = deduplicate(articles)
+    log.info(f"{len(articles)} articles after deduplication.")
+
+    # 4. Run keyword filter and categorize
     categorized = filter_and_categorize(articles)
     for cat, items in categorized.items():
         log.info(f"  {cat}: {len(items)} articles")
