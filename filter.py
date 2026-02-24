@@ -84,6 +84,45 @@ CATEGORY_ORDER = [
 AI_RELEVANCE_THRESHOLD = 6
 AI_SCORE_LIMIT = 150
 
+# Lower index = more specific. Articles in multiple categories
+# are kept only in the most specific one.
+CATEGORY_SPECIFICITY = [
+    "Georgia & Southeast US",
+    "Nuclear",
+    "Hydrocarbons",
+    "AI & Data Centers",
+    "Renewables",
+]
+
+
+def resolve_cross_category_duplicates(categorized: dict) -> dict:
+    """Keep each article only in its most specific category."""
+    url_to_best_cat: dict[str, str] = {}
+    for cat in CATEGORY_SPECIFICITY:
+        for article in categorized.get(cat, []):
+            url = article["url"]
+            if url not in url_to_best_cat:
+                url_to_best_cat[url] = cat
+
+    resolved: dict = {cat: [] for cat in CATEGORY_ORDER}
+    cross_dupes = 0
+    for cat, articles in categorized.items():
+        for article in articles:
+            best = url_to_best_cat.get(article["url"], cat)
+            if best == cat:
+                resolved[cat].append(article)
+            else:
+                cross_dupes += 1
+                log.info(
+                    f"  CROSS-CAT DUPE: '{article['title'][:60]}' "
+                    f"kept in {best}, removed from {cat}"
+                )
+
+    if cross_dupes:
+        log.info(f"Cross-category deduplication: {cross_dupes} duplicate(s) removed.")
+
+    return {k: v for k, v in resolved.items() if v}
+
 
 def similarity(a: str, b: str) -> float:
     return SequenceMatcher(None, a.lower(), b.lower()).ratio()
@@ -204,4 +243,5 @@ def filter_and_categorize(articles: list[dict]) -> dict:
     log.info(f"Keyword filter: {total} article slots across {len(result)} categories.")
 
     result = ai_filter(result)
+    result = resolve_cross_category_duplicates(result)
     return result
