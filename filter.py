@@ -1,7 +1,6 @@
 from difflib import SequenceMatcher
 import logging
 import os
-import concurrent.futures
 import time
 
 log = logging.getLogger(__name__)
@@ -116,7 +115,7 @@ def categorize(article: dict) -> list[str]:
 
 def score_article(title: str, category: str, client) -> int:
     description = CATEGORY_DESCRIPTIONS.get(category, category)
-   prompt = (
+    prompt = (
         f'Rate how relevant this news article title is to the topic of "{description}" '
         f'for an energy security newsletter focused on power generation, electricity grids, '
         f'and energy infrastructure. '
@@ -128,7 +127,7 @@ def score_article(title: str, category: str, client) -> int:
         f'Title: {title}'
     )
     try:
-        time.sleep(0.5)
+        time.sleep(2.5)
         response = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=[{"role": "user", "content": prompt}],
@@ -173,13 +172,11 @@ def ai_filter(categorized: dict) -> dict:
         return category, article, score
 
     results = []
-    with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
-        futures = {executor.submit(score_item, item): item for item in to_score}
-        for future in concurrent.futures.as_completed(futures):
-            try:
-                results.append(future.result())
-            except Exception as e:
-                log.warning(f"Scoring thread failed: {e}")
+    for item in to_score:
+        try:
+            results.append(score_item(item))
+        except Exception as e:
+            log.warning(f"Scoring failed: {e}")
 
     filtered: dict = {cat: [] for cat in CATEGORY_ORDER}
     passed = 0
