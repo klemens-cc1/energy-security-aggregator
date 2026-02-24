@@ -1,4 +1,5 @@
 import os
+import html
 import smtplib
 import logging
 from collections import defaultdict
@@ -34,14 +35,16 @@ def render_html(articles: dict, date_str: str) -> str:
         icon = CATEGORY_ICONS.get(category, "📰")
         rows = ""
         for a in items:
-            title = a["title"].replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+            title = html.escape(a.get("title", ""), quote=False)
+            url = html.escape(a.get("url", ""), quote=True)
+            feed_name = html.escape(a.get("feed_name", ""), quote=False)
             rows += f"""
             <tr>
               <td style="padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
-                <a href="{a['url']}" style="color: #1a1a2e; text-decoration: none; font-size: 14px; line-height: 1.5;">
+                <a href="{url}" style="color: #1a1a2e; text-decoration: none; font-size: 14px; line-height: 1.5;">
                   {title}
                 </a>
-                <span style="color: #888; font-size: 12px; margin-left: 8px;">— {a['feed_name']}</span>
+                <span style="color: #888; font-size: 12px; margin-left: 8px;">— {feed_name}</span>
               </td>
             </tr>"""
 
@@ -94,7 +97,7 @@ def render_html(articles: dict, date_str: str) -> str:
         <tr>
           <td style="background: #f9f9f9; padding: 16px 36px; border-top: 1px solid #eee;">
             <p style="margin: 0; color: #aaa; font-size: 11px; text-align: center;">
-              Energy Security Aggregator · Automated daily digest
+              Energy Security Aggregator · Automated weekly digest
             </p>
           </td>
         </tr>
