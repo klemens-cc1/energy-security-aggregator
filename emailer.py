@@ -152,7 +152,7 @@ def send_email(articles: dict) -> bool:
             server.starttls()
             server.login(smtp_user, smtp_pass)
             server.sendmail(from_addr, recipients, msg.as_string())
-        log.info(f"Email sent to {len(recipients)} recipient(s) with {len(articles)} articles.")
+        log.info(f"Email sent to {len(recipients)} recipient(s) with {sum(len(v) for v in articles.values())} articles.")
         return True
     except Exception as e:
         log.error(f"Failed to send email: {e}")
