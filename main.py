@@ -5,10 +5,11 @@ Run manually or via GitHub Actions cron.
 """
 import logging
 from collections import Counter
+
 from aggregator import aggregate
-from emailer import send_email
-from filter import filter_and_categorize
 from db import get_unsent_articles, mark_sent
+from emailer import send_email
+from filter import deduplicate, filter_and_categorize
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
@@ -21,7 +22,6 @@ def print_weekly_stats(
     all_articles: list,
 ) -> None:
     total_passed = sum(len(v) for v in categorized.values())
-    total_keyword = sum(1 for a in all_articles if a.get("_keyword_matched"))
     dropped = dedup_count - total_passed
     drop_rate = (dropped / dedup_count * 100) if dedup_count else 0
 
@@ -73,6 +73,26 @@ def print_weekly_stats(
     log.info("=" * 55)
 
 
+def get_emailed_article_ids(categorized: dict, deduplicated_articles: list[dict]) -> list[int]:
+    """Return unique DB IDs for articles that were actually included in the digest."""
+    url_to_id = {
+        article.get("url"): article.get("id")
+        for article in deduplicated_articles
+        if article.get("url") and article.get("id") is not None
+    }
+
+    sent_ids: set[int] = set()
+    for items in categorized.values():
+        for article in items:
+            article_id = article.get("id")
+            if article_id is None:
+                article_id = url_to_id.get(article.get("url"))
+            if article_id is not None:
+                sent_ids.add(article_id)
+
+    return sorted(sent_ids)
+
+
 def main():
     # 1. Fetch new articles from all feeds and store in DB
     aggregate()
@@ -87,7 +107,6 @@ def main():
         return
 
     # 3. Deduplicate articles by title similarity
-    from filter import deduplicate
     articles = deduplicate(articles)
     dedup_count = len(articles)
     log.info(f"{dedup_count} articles after deduplication.")
@@ -100,11 +119,11 @@ def main():
     # 5. Send the email digest
     success = send_email(categorized)
 
-    # 6. Mark articles as sent so they're never re-sent
+    # 6. Mark only emailed articles as sent so dropped items can be reconsidered
     if success:
-        ids = [a["id"] for a in articles]
-        mark_sent(ids)
-        log.info("Marked all articles as sent.")
+        sent_ids = get_emailed_article_ids(categorized, articles)
+        mark_sent(sent_ids)
+        log.info(f"Marked {len(sent_ids)} emailed articles as sent.")
 
     # 7. Print weekly stats summary
     print_weekly_stats(raw_count, dedup_count, categorized, articles)
