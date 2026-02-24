@@ -107,16 +107,33 @@ def render_html(articles: dict, date_str: str) -> str:
 
 
 def render_plain(articles: dict, date_str: str) -> str:
-    grouped = articles  # already categorized
-    lines = [f"ENERGY SECURITY WEEKLY BRIEFING — {date_str}", "=" * 50, ""]
-    for category, items in grouped.items():
-        lines.append(f"[ {category.upper()} ]")
-        for a in items:
-            lines.append(f"  • {a['title']}")
-            lines.append(f"    {a['url']}")
-            lines.append(f"    — {a['feed_name']}")
-            lines.append("")
+    total = sum(len(v) for v in articles.values())
+    lines = [
+        "ENERGY SECURITY WEEKLY",
+        date_str,
+        f"{total} articles",
+        "",
+        "=" * 60,
+        "",
+    ]
+
+    for category, items in articles.items():
+        icon = CATEGORY_ICONS.get(category, "")
+        lines.append(f"{icon} {category.upper()}  ({len(items)} articles)")
+        lines.append("-" * 60)
         lines.append("")
+
+        for i, a in enumerate(items, 1):
+            lines.append(f"{i}. {a['title']}")
+            lines.append(f"   {a['feed_name']}")
+            lines.append(f"   {a['url']}")
+            lines.append("")
+
+        lines.append("")
+
+    lines.append("=" * 60)
+    lines.append("Energy Security Aggregator · Automated weekly digest")
+
     return "\n".join(lines)
 
 
