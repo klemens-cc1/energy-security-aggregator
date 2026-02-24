@@ -7,7 +7,7 @@ from db import init_db, is_seen, save_article
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
 
-LOOKBACK_HOURS = 169  # slightly over 24h to avoid missing articles at boundaries
+LOOKBACK_HOURS = 169  # slightly over 7 days to avoid missing weekly boundary articles
 
 
 def load_feeds(path="feeds.yaml") -> list:
