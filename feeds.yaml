@@ -52,6 +52,12 @@ feeds:
   - name: The Current GA
     url: https://thecurrentga.org/feed/
 
+  - name: 11Alive Atlanta
+    url: https://www.11alive.com/feeds/syndication/rss
+
+  - name: WSB-TV Atlanta
+    url: https://www.wsbtv.com/news/topstory.rss
+
   # AI & Data Centers
   - name: Data Center Dynamics
     url: https://www.datacenterdynamics.com/en/rss/
