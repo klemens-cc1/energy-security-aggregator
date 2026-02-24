@@ -9,6 +9,18 @@ feeds:
   - name: The Diplomat
     url: https://thediplomat.com/feed/
 
+  - name: Politico Energy
+    url: https://rss.politico.com/energy.xml
+
+  - name: The Hill Energy
+    url: https://thehill.com/tag/energy/feed/
+
+  - name: Breaking Defense
+    url: https://breakingdefense.com/feed/
+
+  - name: Lawfare
+    url: https://www.lawfaremedia.org/feed
+
   # Renewables
   - name: RenewableEnergyWorld
     url: https://www.renewableenergyworld.com/feed/
@@ -47,6 +59,9 @@ feeds:
 
   - name: EIA Today in Energy
     url: https://www.eia.gov/rss/todayinenergy.xml
+
+  - name: Hart Energy
+    url: https://www.hartenergy.com/rss/news
 
   # Georgia & Southeast US
   - name: The Current GA
