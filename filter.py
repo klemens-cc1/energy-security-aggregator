@@ -116,12 +116,15 @@ def categorize(article: dict) -> list[str]:
 
 def score_article(title: str, category: str, client) -> int:
     description = CATEGORY_DESCRIPTIONS.get(category, category)
-    prompt = (
+   prompt = (
         f'Rate how relevant this news article title is to the topic of "{description}" '
-        f'for an energy security newsletter. '
-        f'Consider only energy, power, infrastructure, and policy relevance. '
-        f'Reply with ONLY a single integer from 1 to 10. '
-        f'1 = completely irrelevant, 10 = highly relevant.\n\n'
+        f'for an energy security newsletter focused on power generation, electricity grids, '
+        f'and energy infrastructure. '
+        f'Score LOW (1-3) for: military hardware, weapons, vehicles, aircraft, geopolitics without energy angle, '
+        f'general technology without energy relevance. '
+        f'Score HIGH (7-10) for: power plants, electricity demand, grid infrastructure, energy policy, '
+        f'fuel production, energy storage, data center power consumption. '
+        f'Reply with ONLY a single integer from 1 to 10.\n\n'
         f'Title: {title}'
     )
     try:
