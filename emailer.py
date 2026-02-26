@@ -138,8 +138,9 @@ def render_plain(articles: dict, date_str: str) -> str:
         lines.append("")
 
     lines.append("=" * 60)
-    lines.append("Energy Security Aggregator · Automated weekly digest")
-
+   lines.append("Energy Security Aggregator · Automated weekly digest")
+    lines.append(f"To unsubscribe reply to this email with subject: Unsubscribe")
+    
     return "\n".join(lines)
 
 
@@ -167,7 +168,7 @@ def send_email(articles: dict) -> bool:
     msg["To"] = ", ".join(recipients)
 
     msg.attach(MIMEText(render_plain(articles, date_str), "plain"))
-    msg.attach(MIMEText(render_html(articles, date_str), "html"))
+    msg.attach(MIMEText(render_html(articles, date_str, from_addr), "html"))
 
     try:
         with smtplib.SMTP(smtp_host, smtp_port) as server:
