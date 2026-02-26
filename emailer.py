@@ -27,7 +27,7 @@ def group_by_category(articles: list[dict]) -> dict:
 
 
 def render_html(articles: dict, date_str: str, from_addr: str = "") -> str:
-    grouped = articles  # already categorized and ordered
+    grouped = articles
 
     total = sum(len(v) for v in grouped.values())
     category_blocks = ""
@@ -138,9 +138,9 @@ def render_plain(articles: dict, date_str: str) -> str:
         lines.append("")
 
     lines.append("=" * 60)
-   lines.append("Energy Security Aggregator · Automated weekly digest")
-    lines.append(f"To unsubscribe reply to this email with subject: Unsubscribe")
-    
+    lines.append("Energy Security Aggregator · Automated weekly digest")
+    lines.append("To unsubscribe reply to this email with subject: Unsubscribe")
+
     return "\n".join(lines)
 
 
@@ -150,13 +150,11 @@ def send_email(articles: dict) -> bool:
         log.info("No new articles — skipping email.")
         return False
 
-    # Required env vars
     smtp_host = os.environ["SMTP_HOST"]
     smtp_port = int(os.environ.get("SMTP_PORT", 587))
     smtp_user = os.environ["SMTP_USER"]
     smtp_pass = os.environ["SMTP_PASS"]
     from_addr = os.environ.get("FROM_ADDRESS", smtp_user)
-    # Comma-separated list of recipient emails
     recipients = [r.strip() for r in os.environ["RECIPIENT_EMAILS"].split(",")]
 
     date_str = datetime.now().strftime("%A, %B %-d, %Y")
