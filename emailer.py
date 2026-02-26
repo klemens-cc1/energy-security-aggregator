@@ -97,6 +97,10 @@ def render_html(articles: dict, date_str: str, from_addr: str = "") -> str:
           <!-- Header: charcoal background, UGA red accent, Oswald font -->
           <tr>
             <td style="background-color: #252525; padding: 28px 36px 24px 36px;">
+              <img src="https://raw.githubusercontent.com/klemens-cc1/energy-security-aggregator/main/assets/citslogo.png"
+                   alt="Benson Bertsch Center for International Trade and Security"
+                   width="220" height="auto"
+                   style="display: block; border: 0; margin-bottom: 16px; margin-left: auto;">
               <p style="margin: 0;
                         font-family: Oswald, 'Arial Narrow', Helvetica Neue, Arial, sans-serif;
                         font-size: 11px; font-weight: 400; text-transform: uppercase;
