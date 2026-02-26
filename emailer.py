@@ -26,7 +26,7 @@ def group_by_category(articles: list[dict]) -> dict:
     return dict(grouped)
 
 
-def render_html(articles: dict, date_str: str) -> str:
+def render_html(articles: dict, date_str: str, from_addr: str = "") -> str:
     grouped = articles  # already categorized and ordered
 
     total = sum(len(v) for v in grouped.values())
