@@ -99,8 +99,7 @@ def render_html(articles: dict, date_str: str, from_addr: str = "") -> str:
             <p style="margin: 0; color: #aaa; font-size: 11px; text-align: center;">
               Energy Security Aggregator · Automated weekly digest
               &nbsp;·&nbsp;
-              <a href="mailto:{from_addr}?subject=Unsubscribe&body=Please remove me from the Energy Security Weekly digest."
-                 style="color: #aaa; text-decoration: underline;">Unsubscribe</a>
+<a href="mailto:{from_addr}?subject=Unsubscribe&amp;body=Please%20unsubscribe%20me."                 style="color: #aaa; text-decoration: underline;">Unsubscribe</a>
             </p>
           </td>
         </tr>
