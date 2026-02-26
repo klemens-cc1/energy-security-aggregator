@@ -128,6 +128,13 @@ def render_html(articles: dict, date_str: str, from_addr: str = "") -> str:
           <!-- Footer: charcoal background matching header -->
           <tr>
             <td style="background-color: #252525; padding: 20px 36px;">
+              <p style="margin: 0 0 8px 0;
+                        font-family: Merriweather, Georgia, Times, serif;
+                        font-size: 13px; color: #ffffff; text-align: center; line-height: 1.8;">
+                Questions? Contact us at
+                <a href="mailto:Wells.Benjamin@uga.edu"
+                   style="color: #ba0c2f; text-decoration: none;">Wells.Benjamin@uga.edu</a>
+              </p>
               <p style="margin: 0;
                         font-family: -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica Neue, sans-serif;
                         font-size: 11px; color: #909090; text-align: center; line-height: 1.8;">
