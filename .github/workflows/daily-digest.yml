@@ -49,7 +49,7 @@ jobs:
           SMTP_USER: ${{ secrets.SMTP_USER }}
           SMTP_PASS: ${{ secrets.SMTP_PASS }}
           FROM_ADDRESS: ${{ secrets.FROM_ADDRESS }}
-          RECIPIENT_EMAILS: ${{ secrets.RECIPIENT_EMAILS }}
+          ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
         run: |
           python - <<'EOF'
           import os, smtplib
@@ -59,14 +59,14 @@ jobs:
           smtp_user = os.environ["SMTP_USER"]
           smtp_pass = os.environ["SMTP_PASS"]
           from_addr = os.environ.get("FROM_ADDRESS", smtp_user)
-          recipients = [r.strip() for r in os.environ["RECIPIENT_EMAILS"].split(",")]
+          admin = os.environ.get("ADMIN_EMAIL", from_addr)
           msg = MIMEText("The Energy Security Aggregator workflow failed. Check GitHub Actions for details:\nhttps://github.com/klemens-cc1/energy-security-aggregator/actions")
           msg["Subject"] = "⚠️ Energy Security Digest — workflow failed"
           msg["From"] = from_addr
-          msg["To"] = ", ".join(recipients)
+          msg["To"] = admin
           with smtplib.SMTP(smtp_host, smtp_port) as s:
               s.starttls()
               s.login(smtp_user, smtp_pass)
-              s.sendmail(from_addr, recipients, msg.as_string())
+              s.sendmail(from_addr, [admin], msg.as_string())
           print("Failure notification sent.")
           EOF
