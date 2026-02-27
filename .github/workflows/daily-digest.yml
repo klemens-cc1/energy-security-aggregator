@@ -2,11 +2,44 @@ name: Daily Energy Security Digest
 
 on:
   schedule:
+    # GitHub Actions cron is UTC. 10:00 AM Atlanta is 14:00 UTC (EDT) or
+    # 15:00 UTC (EST), so we trigger both and gate to local 10:00.
+    - cron: "0 14 * * 5"
     - cron: "0 15 * * 5"
   workflow_dispatch:
 
 jobs:
+  schedule-gate:
+    runs-on: ubuntu-latest
+    outputs:
+      should_run: ${{ steps.gate.outputs.should_run }}
+    steps:
+      - name: Determine whether this run should execute
+        id: gate
+        env:
+          TZ: America/New_York
+        run: |
+          if [ "${{ github.event_name }}" != "schedule" ]; then
+            echo "Manual trigger detected; allowing run."
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          local_time="$(date '+%H:%M %A %Z')"
+          hour="$(date '+%H')"
+          weekday="$(date '+%u')"
+          echo "Current Atlanta local time: $local_time"
+
+          if [ "$weekday" = "5" ] && [ "$hour" = "10" ]; then
+            echo "should_run=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Not Friday 10:00 AM in Atlanta; skipping duplicate UTC trigger."
+            echo "should_run=false" >> "$GITHUB_OUTPUT"
+          fi
+
   send-digest:
+    needs: schedule-gate
+    if: needs.schedule-gate.outputs.should_run == 'true'
     runs-on: ubuntu-latest
 
     steps:
@@ -51,7 +84,7 @@ jobs:
           FROM_ADDRESS: ${{ secrets.FROM_ADDRESS }}
           ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
         run: |
-          python - <<'EOF'
+          python - <<'EOF2'
           import os, smtplib
           from email.mime.text import MIMEText
           smtp_host = os.environ["SMTP_HOST"]
@@ -69,4 +102,4 @@ jobs:
               s.login(smtp_user, smtp_pass)
               s.sendmail(from_addr, [admin], msg.as_string())
           print("Failure notification sent.")
-          EOF
+          EOF2
