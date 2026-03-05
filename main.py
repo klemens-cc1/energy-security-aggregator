@@ -61,13 +61,24 @@ def push_to_curator(articles: list[dict]) -> None:
             method="POST",
         )
 
-        with urllib.request.urlopen(req, timeout=90) as resp:
-            result = json.loads(resp.read())
-            log.info(
-                f"Curator push: {result.get('added', 0)} added, "
-                f"{result.get('skipped', 0)} skipped "
-                f"(week {result.get('week_key', week_key)})"
-            )
+        import time
+        last_error = None
+        for attempt in range(3):
+            try:
+                with urllib.request.urlopen(req, timeout=90) as resp:
+                    result = json.loads(resp.read())
+                    log.info(
+                        f"Curator push: {result.get('added', 0)} added, "
+                        f"{result.get('skipped', 0)} skipped "
+                        f"(week {result.get('week_key', week_key)})"
+                    )
+                    return
+            except Exception as e:
+                last_error = e
+                log.warning(f"Curator push attempt {attempt + 1} failed: {e} — retrying...")
+                time.sleep(15)
+
+        log.warning(f"Curator push failed after 3 attempts (non-fatal): {last_error}")
 
     except Exception as e:
         log.warning(f"Curator push failed (non-fatal): {e}")
