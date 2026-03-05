@@ -61,7 +61,7 @@ def push_to_curator(articles: list[dict]) -> None:
             method="POST",
         )
 
-        with urllib.request.urlopen(req, timeout=30) as resp:
+        with urllib.request.urlopen(req, timeout=90) as resp:
             result = json.loads(resp.read())
             log.info(
                 f"Curator push: {result.get('added', 0)} added, "
