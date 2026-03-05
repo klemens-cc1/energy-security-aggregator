@@ -2,8 +2,6 @@ name: Daily Energy Security Digest
 
 on:
   schedule:
-    # GitHub Actions cron is UTC. 10:00 AM Atlanta is 14:00 UTC (EDT) or
-    # 15:00 UTC (EST), so we trigger both and gate to local 10:00.
     - cron: "0 14 * * 5"
     - cron: "0 15 * * 5"
   workflow_dispatch:
@@ -24,12 +22,10 @@ jobs:
             echo "should_run=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-
           local_time="$(date '+%H:%M %A %Z')"
           hour="$(date '+%H')"
           weekday="$(date '+%u')"
           echo "Current Atlanta local time: $local_time"
-
           if [ "$weekday" = "5" ] && [ "$hour" = "10" ]; then
             echo "should_run=true" >> "$GITHUB_OUTPUT"
           else
@@ -41,28 +37,22 @@ jobs:
     needs: schedule-gate
     if: needs.schedule-gate.outputs.should_run == 'true'
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-
       - name: Cache pip dependencies
         uses: actions/cache@v4
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
-
       - name: Install dependencies
         run: pip install -r requirements.txt
-
       - name: Confirm filter loaded
         run: python -c "from filter import filter_and_categorize; print('filter OK')"
-
       - name: Run aggregator
         env:
           SMTP_HOST: ${{ secrets.SMTP_HOST }}
@@ -74,8 +64,7 @@ jobs:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           CURATOR_URL: ${{ secrets.CURATOR_URL }}
           CURATOR_API_KEY: ${{ secrets.CURATOR_API_KEY }}
-        run: python main.py
-
+        run: python main.py --mode digest
       - name: Notify on failure
         if: failure()
         env:
