@@ -2,17 +2,10 @@
 """
 Energy Security Aggregator — main entry point.
 Run manually or via GitHub Actions cron.
-
-Modes:
-  python main.py               # digest mode (default) — fetch + AI filter + send email
-  python main.py --mode digest # same as above
-  python main.py --mode curate # fetch + push to curator only, no email sent
 """
-import argparse
 import json
 import logging
 import os
-import time
 from collections import Counter
 from datetime import datetime, timezone
 
@@ -25,7 +18,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 log = logging.getLogger(__name__)
 
 
-def push_to_curator(articles: list[dict]) -> None:
+def push_to_curator(articles: list[dict], mode: str = "digest") -> None:
     """Push keyword-matched articles to the curator web app (pre-AI-filter)."""
     curator_url = os.environ.get("CURATOR_URL", "").rstrip("/")
     api_key = os.environ.get("CURATOR_API_KEY", "")
@@ -40,12 +33,13 @@ def push_to_curator(articles: list[dict]) -> None:
         now = datetime.now(timezone.utc)
         week_key = f"{now.year}-W{now.isocalendar()[1]:02d}"
 
+        # Only push articles that match at least one keyword category
         to_push = []
         for article in articles:
             matched_cats = categorize(article)
             if matched_cats:
                 a = dict(article)
-                a["category"] = matched_cats[0]
+                a["category"] = matched_cats[0]  # primary category
                 to_push.append(a)
 
         if not to_push:
@@ -55,6 +49,7 @@ def push_to_curator(articles: list[dict]) -> None:
         payload = json.dumps({
             "week_key": week_key,
             "articles": to_push,
+            "triggered_by": mode,
         }).encode("utf-8")
 
         req = urllib.request.Request(
@@ -67,6 +62,7 @@ def push_to_curator(articles: list[dict]) -> None:
             method="POST",
         )
 
+        import time
         last_error = None
         for attempt in range(3):
             try:
@@ -143,6 +139,7 @@ def print_weekly_stats(
 
 
 def get_emailed_article_ids(categorized: dict, deduplicated_articles: list[dict]) -> list[int]:
+    """Return unique DB IDs for articles that were actually included in the digest."""
     url_to_id = {
         article.get("url"): article.get("id")
         for article in deduplicated_articles
@@ -162,42 +159,24 @@ def get_emailed_article_ids(categorized: dict, deduplicated_articles: list[dict]
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Energy Security Aggregator")
-    parser.add_argument(
-        "--mode",
-        choices=["digest", "curate"],
-        default="digest",
-        help="digest: fetch + AI filter + send email (default). curate: fetch + push to curator only, no email.",
-    )
-    args = parser.parse_args()
-    mode = args.mode
-    log.info(f"Running in mode: {mode}")
-
     # 1. Fetch new articles from all feeds and store in DB
     aggregate()
 
     # 2. Get all articles not yet sent
     articles = get_unsent_articles()
     raw_count = len(articles)
-    log.info(f"{raw_count} unsent articles ready.")
+    log.info(f"{raw_count} unsent articles ready for digest.")
 
     if not articles:
-        log.info("No new articles found.")
+        log.info("Nothing to send this week.")
         return
 
-    # 3. Deduplicate
+    # 3. Deduplicate articles by title similarity
     articles = deduplicate(articles)
     dedup_count = len(articles)
     log.info(f"{dedup_count} articles after deduplication.")
 
-    if mode == "curate":
-        # Curate mode: push to curator only, no email, no marking as sent
-        push_to_curator(articles)
-        log.info("Curate mode complete — no email sent, articles not marked as sent.")
-        return
-
-    # Digest mode: full pipeline
-    # 4. Push to curator alongside digest run
+    # 4. Push keyword-matched articles to curator (pre-AI-filter)
     push_to_curator(articles)
 
     # 5. Run keyword filter and categorize (includes AI scoring)
