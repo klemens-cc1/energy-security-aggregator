@@ -2,10 +2,17 @@
 """
 Energy Security Aggregator — main entry point.
 Run manually or via GitHub Actions cron.
+
+Modes:
+  python main.py               # digest mode (default) — fetch + AI filter + send email
+  python main.py --mode digest # same as above
+  python main.py --mode curate # fetch + push to curator only, no email sent
 """
+import argparse
 import json
 import logging
 import os
+import time
 from collections import Counter
 from datetime import datetime, timezone
 
@@ -33,13 +40,12 @@ def push_to_curator(articles: list[dict], mode: str = "digest") -> None:
         now = datetime.now(timezone.utc)
         week_key = f"{now.year}-W{now.isocalendar()[1]:02d}"
 
-        # Only push articles that match at least one keyword category
         to_push = []
         for article in articles:
             matched_cats = categorize(article)
             if matched_cats:
                 a = dict(article)
-                a["category"] = matched_cats[0]  # primary category
+                a["category"] = matched_cats[0]
                 to_push.append(a)
 
         if not to_push:
@@ -62,7 +68,6 @@ def push_to_curator(articles: list[dict], mode: str = "digest") -> None:
             method="POST",
         )
 
-        import time
         last_error = None
         for attempt in range(3):
             try:
@@ -159,25 +164,43 @@ def get_emailed_article_ids(categorized: dict, deduplicated_articles: list[dict]
 
 
 def main():
+    parser = argparse.ArgumentParser(description="Energy Security Aggregator")
+    parser.add_argument(
+        "--mode",
+        choices=["digest", "curate"],
+        default="digest",
+        help="digest: fetch + AI filter + send email (default). curate: fetch + push to curator only, no email.",
+    )
+    args = parser.parse_args()
+    mode = args.mode
+    log.info(f"Running in mode: {mode}")
+
     # 1. Fetch new articles from all feeds and store in DB
     aggregate()
 
     # 2. Get all articles not yet sent
     articles = get_unsent_articles()
     raw_count = len(articles)
-    log.info(f"{raw_count} unsent articles ready for digest.")
+    log.info(f"{raw_count} unsent articles ready.")
 
     if not articles:
-        log.info("Nothing to send this week.")
+        log.info("No new articles found.")
         return
 
-    # 3. Deduplicate articles by title similarity
+    # 3. Deduplicate
     articles = deduplicate(articles)
     dedup_count = len(articles)
     log.info(f"{dedup_count} articles after deduplication.")
 
-    # 4. Push keyword-matched articles to curator (pre-AI-filter)
-    push_to_curator(articles)
+    if mode == "curate":
+        # Curate mode: push to curator only, no email, no marking as sent
+        push_to_curator(articles, mode)
+        log.info("Curate mode complete — no email sent, articles not marked as sent.")
+        return
+
+    # Digest mode: full pipeline
+    # 4. Push to curator alongside digest run
+    push_to_curator(articles, mode)
 
     # 5. Run keyword filter and categorize (includes AI scoring)
     categorized = filter_and_categorize(articles)
