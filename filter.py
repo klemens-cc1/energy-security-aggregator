@@ -56,20 +56,34 @@ CATEGORIES = {
         "liquefied petroleum", "propane", "natural gas pipeline",
     ],
     "Georgia & Southeast US": [
-        "georgia", "atlanta", "savannah", "augusta",
-        "alabama", "florida", "tennessee", "south carolina", "north carolina",
-        "mississippi", "louisiana", "arkansas", "kentucky",
-        "southeastern", "southeast us", "appalachian",
+        # Compound Georgia energy terms only — bare "georgia" removed
+        # to prevent false positives on cultural/community/sports content
         "georgia power", "georgia energy", "georgia solar",
         "georgia nuclear", "georgia grid", "georgia utility",
         "georgia public service commission", "georgia psc",
+        "georgia natural gas", "georgia gas", "georgia electric",
+        "georgia transmission", "georgia pipeline",
         "plant vogtle", "southern company",
         "tennessee valley authority", "tva",
         "duke energy", "dominion energy", "entergy",
+        # Compound Southeast terms
         "southeastern energy", "southeast energy",
         "southeast power", "southeast grid",
         "appalachian power", "alabama power", "mississippi power",
         "gulf coast energy", "gulf power",
+        # State-level energy compounds
+        "alabama energy", "alabama solar", "alabama gas",
+        "florida energy", "florida power", "florida solar", "florida gas",
+        "tennessee energy", "tennessee solar", "tennessee gas",
+        "south carolina energy", "south carolina power", "south carolina nuclear",
+        "north carolina energy", "north carolina power", "north carolina solar",
+        "louisiana energy", "louisiana lng", "louisiana gas",
+        "mississippi energy", "mississippi gas",
+        "kentucky energy", "kentucky coal", "kentucky power",
+        "arkansas energy", "arkansas power",
+        # City/region compounds
+        "atlanta energy", "atlanta power", "atlanta grid",
+        "appalachian energy", "appalachian gas",
     ],
 }
 
@@ -158,10 +172,24 @@ def score_article(title: str, category: str, client) -> int:
         f'Rate how relevant this news article title is to the topic of "{description}" '
         f'for an energy security newsletter focused on power generation, electricity grids, '
         f'and energy infrastructure. '
-        f'Score LOW (1-3) for: military hardware, weapons, vehicles, aircraft, geopolitics without energy angle, '
-        f'general technology without energy relevance. '
-        f'Score HIGH (7-10) for: power plants, electricity demand, grid infrastructure, energy policy, '
-        f'fuel production, energy storage, data center power consumption. '
+        f'\n\n'
+        f'Score LOW (1-3) for:\n'
+        f'- Military hardware, weapons, vehicles, or aircraft\n'
+        f'- Geopolitics or international relations with no energy angle\n'
+        f'- General technology news with no energy relevance\n'
+        f'- Cultural events, community news, festivals, heritage, sports, or tourism\n'
+        f'- Articles where a place name appears but the subject is not energy\n'
+        f'- Environmental news unrelated to energy infrastructure\n'
+        f'- Business/finance news unrelated to energy companies or markets\n'
+        f'\n'
+        f'Score HIGH (7-10) for:\n'
+        f'- Power plants, electricity demand, or grid infrastructure\n'
+        f'- Energy policy, regulation, or legislation\n'
+        f'- Fuel production, supply chains, or energy markets\n'
+        f'- Energy storage, transmission, or distribution\n'
+        f'- Data center power consumption or AI energy demand\n'
+        f'- Utility company operations or investments\n'
+        f'\n'
         f'Reply with ONLY a single integer from 1 to 10.\n\n'
         f'Title: {title}'
     )
