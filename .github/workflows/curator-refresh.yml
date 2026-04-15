@@ -25,4 +25,5 @@ jobs:
           CURATOR_URL: ${{ secrets.CURATOR_URL }}
           CURATOR_API_KEY: ${{ secrets.CURATOR_API_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: python main.py --mode curate

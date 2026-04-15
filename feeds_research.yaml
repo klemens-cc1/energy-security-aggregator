@@ -1,0 +1,180 @@
+# Research-only specialist feeds
+# These are NOT used for the weekly newsletter digest — only for research mode deep dives.
+# They are more niche, higher-volume, or topic-specific than the newsletter feed list.
+# Some may be partially paywalled; free articles will still be fetched.
+# Validate/prune this list as needed — broken feeds fail silently.
+
+feeds:
+
+  # ── Nuclear & SMR ──────────────────────────────────────────────────────────
+  - name: NEI Nuclear Notes
+    url: https://www.nei.org/rss/news
+    tags: nuclear,policy
+
+  - name: IAEA Newscenter
+    url: https://www.iaea.org/feeds/topnews.xml
+    tags: nuclear,policy,international
+
+  - name: NRC News Releases
+    url: https://www.nrc.gov/reading-rm/doc-collections/news/rss.xml
+    tags: nuclear,regulatory,government
+
+  - name: Nuclear Engineering International
+    url: https://www.neimagazine.com/feed/
+    tags: nuclear,technology
+
+  - name: Third Way
+    url: https://www.thirdway.org/feed
+    tags: nuclear,policy,renewables
+
+  - name: Power Magazine Nuclear
+    url: https://www.powermag.com/nuclear/feed/
+    tags: nuclear,technology
+
+  # ── LNG & Hydrocarbons ─────────────────────────────────────────────────────
+  - name: LNG World News
+    url: https://www.lngworldnews.com/feed/
+    tags: lng,hydrocarbons
+
+  - name: Offshore Energy
+    url: https://www.offshore-energy.biz/feed/
+    tags: lng,hydrocarbons,offshore
+
+  - name: Natural Gas Intelligence
+    url: https://www.naturalgasintel.com/feed/
+    tags: lng,hydrocarbons,markets
+
+  - name: Oil & Gas Journal
+    url: https://www.ogj.com/rss
+    tags: hydrocarbons,lng,technology
+
+  - name: Rigzone
+    url: https://www.rigzone.com/news/rss/rigzone_latest.aspx
+    tags: hydrocarbons,lng,offshore
+
+  # ── Data Centers & AI Infrastructure ──────────────────────────────────────
+  - name: Data Center Frontier
+    url: https://www.datacenterfrontier.com/feed/
+    tags: data_centers,ai_infrastructure
+
+  - name: Uptime Institute Blog
+    url: https://uptimeinstitute.com/resources/feed/
+    tags: data_centers,reliability
+
+  - name: The Register Data Centre
+    url: https://www.theregister.com/data_centre/rss
+    tags: data_centers,technology
+
+  - name: SDxCentral
+    url: https://www.sdxcentral.com/feed/
+    tags: data_centers,technology,ai_infrastructure
+
+  - name: DCD Magazine
+    url: https://www.datacenterdynamics.com/en/rss/
+    tags: data_centers
+    # NOTE: already in newsletter feeds — duplicate acceptable, deduplicated at import
+
+  # ── Grid, Transmission & Power ────────────────────────────────────────────
+  - name: Utility Dive
+    url: https://www.utilitydive.com/feeds/news/
+    tags: grid,utilities,policy
+
+  - name: POWER Magazine
+    url: https://www.powermag.com/feed/
+    tags: grid,power_generation,technology
+
+  - name: T&D World
+    url: https://www.tdworld.com/rss/all
+    tags: grid,transmission,distribution
+
+  - name: RTO Insider
+    url: https://www.rtoinsider.com/feed/
+    tags: grid,regulatory,markets
+
+  - name: Greentech Media
+    url: https://www.greentechmedia.com/rss/all
+    tags: grid,renewables,markets
+
+  - name: NERC News
+    url: https://www.nerc.com/Pages/default.aspx
+    tags: grid,reliability,regulatory
+    # NOTE: NERC RSS URL uncertain — may need manual update
+
+  # ── Policy & Think Tanks ──────────────────────────────────────────────────
+  - name: Brookings Institution
+    url: https://www.brookings.edu/feed/
+    tags: policy,research
+
+  - name: CSIS Analysis
+    url: https://www.csis.org/rss/analysis
+    tags: policy,security,research
+
+  - name: Atlantic Council
+    url: https://www.atlanticcouncil.org/feed/
+    tags: policy,security,international
+
+  - name: Columbia SIPA Energy Policy
+    url: https://www.energypolicy.columbia.edu/feed/
+    tags: policy,research,lng,renewables
+
+  - name: Belfer Center
+    url: https://www.belfercenter.org/rss.xml
+    tags: policy,security,nuclear
+
+  - name: RAND Corporation
+    url: https://www.rand.org/pubs/rss/rss_feeds.xml
+    tags: policy,security,research
+
+  - name: IEEFA
+    url: https://ieefa.org/feed/
+    tags: policy,research,energy_finance
+
+  - name: Rocky Mountain Institute
+    url: https://rmi.org/feed/
+    tags: policy,renewables,research
+
+  - name: Wilson Center
+    url: https://www.wilsoncenter.org/rss.xml
+    tags: policy,security,international
+
+  - name: Energy Policy Journal (Elsevier)
+    url: https://rss.sciencedirect.com/publication/science/03014215
+    tags: policy,research,academic
+
+  - name: Carbon Brief
+    url: https://www.carbonbrief.org/feed
+    tags: policy,climate,research
+
+  # ── Government & Regulatory ────────────────────────────────────────────────
+  - name: DOE News
+    url: https://www.energy.gov/rss.xml
+    tags: government,policy,nuclear,renewables
+
+  - name: FERC News
+    url: https://www.ferc.gov/rss/news.rss
+    tags: regulatory,grid,lng,government
+
+  - name: EPA Climate News
+    url: https://www.epa.gov/newsreleases/search/rss/topic/climate-change
+    tags: regulatory,government,policy
+
+  # ── Regional & Southeast US ────────────────────────────────────────────────
+  - name: Georgia Recorder
+    url: https://georgiarecorder.com/feed/
+    tags: southeast,georgia,policy
+
+  - name: Energy News Network
+    url: https://energynews.us/feed/
+    tags: southeast,policy,renewables
+
+  - name: Southeast Energy News
+    url: https://southeastenergynews.com/feed/
+    tags: southeast,grid,utilities
+
+  - name: Inside Climate News
+    url: https://insideclimatenews.org/feed/
+    tags: policy,climate,southeast
+
+  - name: Energy Monitor
+    url: https://www.energymonitor.ai/feed/
+    tags: policy,markets,international

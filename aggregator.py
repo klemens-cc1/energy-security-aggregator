@@ -16,6 +16,18 @@ def load_feeds(path="feeds.yaml") -> list:
     return config.get("feeds", [])
 
 
+def load_feeds_with_fallback(path="feeds.yaml") -> list:
+    """Load from Supabase feed_sources; fall back to feeds.yaml if unavailable."""
+    try:
+        from feeds_db import load_feeds_from_supabase
+        feeds = load_feeds_from_supabase()
+        log.info(f"Loaded {len(feeds)} newsletter feeds from Supabase.")
+        return feeds
+    except Exception as e:
+        log.warning(f"Supabase feed load failed ({e}) — falling back to {path}")
+        return load_feeds(path)
+
+
 def parse_published(entry) -> datetime | None:
     """Try to extract a timezone-aware published datetime from a feed entry."""
     for attr in ("published_parsed", "updated_parsed"):
@@ -102,7 +114,7 @@ def print_feed_health(results: dict[str, bool]) -> None:
 
 def aggregate(feeds_path="feeds.yaml") -> list[dict]:
     init_db()
-    feeds = load_feeds(feeds_path)
+    feeds = load_feeds_with_fallback(feeds_path)
     all_articles = []
     health: dict[str, bool] = {}
 
