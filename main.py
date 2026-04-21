@@ -19,7 +19,7 @@ from datetime import datetime, timezone
 from aggregator import aggregate
 from db import get_unsent_articles, mark_sent
 from emailer import send_email
-from filter import deduplicate, filter_and_categorize, categorize
+from filter import deduplicate, filter_and_categorize, categorize, CATEGORY_SPECIFICITY
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
@@ -45,7 +45,12 @@ def push_to_curator(articles: list[dict], mode: str = "digest") -> None:
             matched_cats = categorize(article)
             if matched_cats:
                 a = dict(article)
-                a["category"] = matched_cats[0]
+                # Use specificity order so Georgia & Southeast always wins
+                # over a broader category like Renewables
+                a["category"] = next(
+                    (c for c in CATEGORY_SPECIFICITY if c in matched_cats),
+                    matched_cats[0],
+                )
                 to_push.append(a)
 
         if not to_push:
