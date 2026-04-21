@@ -78,6 +78,19 @@ def fetch_feed(feed_config: dict) -> tuple[list[dict], bool]:
             import re as _re
             summary = _re.sub(r'<[^>]+>', '', raw_summary).strip()
             summary = _re.sub(r'\s+', ' ', summary)[:500]
+            # Discard known boilerplate site descriptions
+            _BOILERPLATE = [
+                "energy information administration",
+                "official energy statistics",
+                "reuters | breaking",
+                "yahoo! news",
+                "bloomberg - are you a robot",
+                "just a moment",
+            ]
+            if len(summary) < 60 or any(b in summary.lower() for b in _BOILERPLATE):
+                summary = ""
+            if len(summary) < 60:
+                summary = ""
             save_article(guid, title, url_, name, category, pub_str)
             articles.append({
                 "guid": guid,
