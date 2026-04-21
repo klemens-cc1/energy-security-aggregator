@@ -73,6 +73,11 @@ def fetch_feed(feed_config: dict) -> tuple[list[dict], bool]:
             title = getattr(entry, "title", "(No title)").strip()
             url_ = getattr(entry, "link", "")
             pub_str = published.isoformat() if published else ""
+            # Pull RSS summary and strip any HTML tags
+            raw_summary = getattr(entry, "summary", "") or ""
+            import re as _re
+            summary = _re.sub(r'<[^>]+>', '', raw_summary).strip()
+            summary = _re.sub(r'\s+', ' ', summary)[:500]
             save_article(guid, title, url_, name, category, pub_str)
             articles.append({
                 "guid": guid,
@@ -81,6 +86,7 @@ def fetch_feed(feed_config: dict) -> tuple[list[dict], bool]:
                 "feed_name": name,
                 "category": category,
                 "published_at": pub_str,
+                "summary": summary,
             })
 
         log.info(f"  {len(articles)} new articles from {name}")
