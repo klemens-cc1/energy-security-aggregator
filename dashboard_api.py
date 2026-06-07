@@ -9,6 +9,14 @@ from typing import Any
 
 from flask import Flask, jsonify, request
 
+
+def _qint(key: str, default: int, max_val: int | None = None) -> int:
+    try:
+        n = int(request.args.get(key, default))
+    except (ValueError, TypeError):
+        n = default
+    return min(n, max_val) if max_val is not None else n
+
 from osint_db import get_conn, init_db
 
 app = Flask(__name__)
@@ -61,7 +69,7 @@ def health() -> Any:
 def assets() -> Any:
     asset_type = request.args.get("type")
     state = request.args.get("state")
-    limit = min(int(request.args.get("limit", "5000")), 25000)
+    limit = _qint("limit", 5000, 25000)
 
     where = []
     params: list[Any] = []
@@ -124,7 +132,7 @@ def grid_current() -> Any:
 
 @app.get("/api/incidents")
 def incidents() -> Any:
-    days = int(request.args.get("days", "30"))
+    days = _qint("days", 30)
     since = (datetime.now(timezone.utc) - timedelta(days=days)).date().isoformat()
     with get_conn() as conn:
         rows = conn.execute(
@@ -141,7 +149,7 @@ def incidents() -> Any:
 
 @app.get("/api/news")
 def news() -> Any:
-    limit = min(int(request.args.get("limit", "20")), 100)
+    limit = _qint("limit", 20, 100)
     db_path = os.environ.get("DB_PATH", "articles.db")
     try:
         import sqlite3

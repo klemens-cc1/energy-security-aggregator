@@ -211,16 +211,22 @@ class Handler(BaseHTTPRequestHandler):
     def log_message(self, *_):
         pass
 
+    def _localhost_origin(self) -> str:
+        origin = self.headers.get("Origin", "")
+        if origin.startswith("http://localhost") or origin.startswith("http://127.0.0.1"):
+            return origin
+        return f"http://localhost:{PORT}"
+
     def _send(self, status, content_type, body):
         self.send_response(status)
         self.send_header("Content-Type", content_type)
-        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Origin", self._localhost_origin())
         self.end_headers()
         self.wfile.write(body if isinstance(body, bytes) else body.encode())
 
     def do_OPTIONS(self):
         self.send_response(204)
-        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Origin", self._localhost_origin())
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
         self.end_headers()
