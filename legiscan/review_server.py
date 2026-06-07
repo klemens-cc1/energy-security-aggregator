@@ -279,7 +279,18 @@ class Handler(BaseHTTPRequestHandler):
             self._send(200, "application/json", json.dumps(list(TOPIC_QUERIES.keys())))
             return
 
-        file_path = HERE / "review.html" if path in ("/legiscan/review.html", "/") else HERE / Path(path.lstrip("/"))
+        if path in ("/legiscan/review.html", "/"):
+            file_path = HERE / "review.html"
+        else:
+            try:
+                candidate = (HERE / Path(path.lstrip("/"))).resolve()
+                if not candidate.is_relative_to(HERE.resolve()):
+                    self._send(403, "text/plain", "Forbidden")
+                    return
+                file_path = candidate
+            except Exception:
+                self._send(400, "text/plain", "Bad request")
+                return
         if file_path.exists() and file_path.is_file():
             ct = "text/html" if file_path.suffix == ".html" else "text/plain"
             self._send(200, ct, file_path.read_bytes())
