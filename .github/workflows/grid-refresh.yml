@@ -1,0 +1,35 @@
+name: Grid Telemetry Refresh
+
+on:
+  schedule:
+    - cron: "0 * * * *"   # top of every hour
+  workflow_dispatch:        # allow manual trigger from GitHub Actions UI
+
+jobs:
+  push-grid:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout aggregator repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-gridstatus-${{ hashFiles('requirements.txt') }}
+          restore-keys: ${{ runner.os }}-pip-gridstatus-
+
+      - name: Install dependencies
+        run: pip install gridstatus==0.31.0 python-dotenv
+
+      - name: Fetch and push grid snapshots
+        env:
+          CURATOR_URL:    ${{ secrets.CURATOR_URL }}
+          INGEST_API_KEY: ${{ secrets.INGEST_API_KEY }}
+        run: python push_grid.py

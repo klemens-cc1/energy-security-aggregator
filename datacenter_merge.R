@@ -484,8 +484,8 @@ op_brackets <- data.frame(
     3,2,2,1,2,1
   ),
   tier = c(
-    rep("hyperscaler",6), rep("major_colo",17), rep("regional_colo",14),
-    rep("specialty",2), rep("crypto_miner",4), rep("major_colo",3), rep("telco_pop",6)
+    rep("hyperscaler",6), rep("major_colo",17), rep("regional_colo",22),
+    rep("crypto_miner",4), rep("major_colo",3), rep("telco_pop",6)
   ),
   stringsAsFactors = FALSE
 )
@@ -633,7 +633,12 @@ echo_append <- data.frame(
   stringsAsFactors=FALSE, row.names=NULL
 )
 
-atlas_out <- plyr::rbind.fill(atlas_out, echo_append)
+rbind_fill <- function(a, b) {
+  for (col in setdiff(names(b), names(a))) a[[col]] <- NA
+  for (col in setdiff(names(a), names(b))) b[[col]] <- NA
+  rbind(a[, union(names(a), names(b))], b[, union(names(a), names(b))])
+}
+atlas_out <- rbind_fill(atlas_out, echo_append)
 cat(sprintf("Total rows after ECHO append: %d\n", nrow(atlas_out)))
 cat(sprintf("Echo-verified rows: %d | New rows added: %d\n",
             sum(atlas_out$echo_verified, na.rm=TRUE), nrow(echo_append)))
@@ -691,3 +696,164 @@ freezePane(wb2,"Confidence Reference",firstRow=TRUE)
 saveWorkbook(wb2, FINAL_PATH, overwrite=TRUE)
 cat(sprintf("Final output: %s\n  Rows: %d | Columns: %d\n",
             FINAL_PATH, nrow(final_out), ncol(final_out)))
+
+# ==============================================================================
+# PHASE 3: CAMPUS CLUSTERING
+# Same-operator buildings within CAMPUS_DIST_M metres are treated as one campus.
+# Bracket MW is split among buildings so the campus total equals one bracket unit.
+# Only rows with operator_bracket_* or echo_operator_bracket confidence are
+# clustered; sec_filing / exact / fuzzy / investor_supplement are per-building.
+# ==============================================================================
+cat("\n--- Phase 3: Campus Clustering ---\n")
+
+CLUSTER_TIERS <- c(
+  "operator_bracket_hyperscaler", "operator_bracket_major_colo",
+  "operator_bracket_regional_colo", "operator_bracket_specialty",
+  "operator_bracket_telco_pop",    "operator_bracket_crypto_miner",
+  "operator_bracket_unknown",      "echo_operator_bracket"
+)
+CAMPUS_DIST_M <- 1000   # metres; 1 km covers spread hyperscaler campuses
+
+# BFS connected-components for n nodes with an edge matrix (2-col, i < j)
+bfs_components <- function(n, edge_mat) {
+  adj <- vector("list", n)
+  if (!is.null(edge_mat) && nrow(edge_mat) > 0) {
+    for (k in seq_len(nrow(edge_mat))) {
+      i <- edge_mat[k, 1]; j <- edge_mat[k, 2]
+      adj[[i]] <- c(adj[[i]], j)
+      adj[[j]] <- c(adj[[j]], i)
+    }
+  }
+  labels <- integer(n); comp <- 0L
+  for (s in seq_len(n)) {
+    if (labels[s] != 0L) next
+    comp <- comp + 1L; q <- s; labels[s] <- comp
+    while (length(q) > 0) {
+      curr <- q[1]; q <- q[-1]
+      for (nb in adj[[curr]]) {
+        if (labels[nb] == 0L) { labels[nb] <- comp; q <- c(q, nb) }
+      }
+    }
+  }
+  labels
+}
+
+flat_dist_m <- function(lat1, lon1, lat2, lon2) {
+  dlat <- (lat2 - lat1) * 111000
+  dlon <- (lon2 - lon1) * 111000 * cos((lat1 + lat2) / 2 * pi / 180)
+  sqrt(dlat^2 + dlon^2)
+}
+
+atlas_out$campus_id             <- NA_character_
+atlas_out$campus_building_count <- 1L
+atlas_out$campus_alloc_method   <- "single"
+
+lat_num <- suppressWarnings(as.numeric(atlas_out$Latitude))
+lon_num <- suppressWarnings(as.numeric(atlas_out$Longitude))
+
+clust_idx <- which(
+  atlas_out$source_confidence %in% CLUSTER_TIERS &
+  !is.na(lat_num) & !is.na(lon_num)
+)
+
+companies <- unique(atlas_out$Company[clust_idx])
+companies <- companies[!is.na(companies)]
+
+campus_n    <- 0L
+rows_merged <- 0L
+
+for (co in companies) {
+  idx  <- clust_idx[which(atlas_out$Company[clust_idx] == co)]
+  n    <- length(idx)
+  lats <- lat_num[idx]
+  lons <- lon_num[idx]
+
+  edge_mat <- NULL
+  if (n >= 2) {
+    for (i in seq_len(n - 1)) {
+      for (j in (i + 1):n) {
+        if (flat_dist_m(lats[i], lons[i], lats[j], lons[j]) <= CAMPUS_DIST_M) {
+          edge_mat <- rbind(edge_mat, c(i, j))
+        }
+      }
+    }
+  }
+
+  labels <- bfs_components(n, edge_mat)
+
+  for (comp in unique(labels)) {
+    members    <- which(labels == comp)
+    global_idx <- idx[members]
+    n_bldg     <- length(members)
+    campus_n   <- campus_n + 1L
+    cid        <- sprintf("CAMPUS_%05d", campus_n)
+
+    atlas_out$campus_id[global_idx]             <- cid
+    atlas_out$campus_building_count[global_idx] <- n_bldg
+
+    if (n_bldg > 1) {
+      rows_merged <- rows_merged + n_bldg
+      bracket_kw  <- max(atlas_out$est_power_kw[global_idx], na.rm = TRUE)
+      sqft        <- atlas_out$es_floor_space_sqft[global_idx]
+      has_sqft    <- !is.na(sqft) & sqft > 0
+
+      if (all(has_sqft)) {
+        share <- sqft / sum(sqft)
+        atlas_out$est_power_kw[global_idx]        <- round(bracket_kw * share, 1)
+        atlas_out$campus_alloc_method[global_idx] <- "floor_space_weighted"
+      } else {
+        atlas_out$est_power_kw[global_idx]        <- round(bracket_kw / n_bldg, 1)
+        atlas_out$campus_alloc_method[global_idx] <- "even_split"
+      }
+    }
+  }
+}
+
+# Assign solo campus IDs to all remaining rows
+remaining <- which(is.na(atlas_out$campus_id))
+for (i in remaining) {
+  campus_n <- campus_n + 1L
+  atlas_out$campus_id[i] <- sprintf("CAMPUS_%05d", campus_n)
+}
+
+# Recompute annual cost with adjusted power
+atlas_out$est_annual_cost_musd <- round(
+  atlas_out$est_power_kw * HOURS_PER_YEAR *
+    (atlas_out$commercial_rate_cents_kwh / 100) / 1e6, 3
+)
+
+cat(sprintf("Rows in clustering tiers:    %d\n", length(clust_idx)))
+cat(sprintf("Multi-building campus rows:  %d\n", rows_merged))
+cat(sprintf("Total campus IDs assigned:   %d\n", campus_n))
+cat(sprintf("Est total power after clust: %.1f GW\n",
+            sum(atlas_out$est_power_kw, na.rm = TRUE) / 1e6))
+
+# ==============================================================================
+# RE-SAVE WITH CAMPUS COLUMNS
+# ==============================================================================
+keep3 <- intersect(
+  c("Name","Company","City","State","Address","Latitude","Longitude",
+    "es_facility_name","es_floor_space_sqft","match_score",
+    "est_power_kw","est_annual_cost_musd","source_confidence",
+    "primary_utility","commercial_rate_cents_kwh","eia_grid_region","eia_rto",
+    "echo_verified","echo_npdes_flag","echo_air_flag",
+    "campus_id","campus_building_count","campus_alloc_method"),
+  names(atlas_out)
+)
+final_out3 <- atlas_out[, keep3]
+
+wb3 <- createWorkbook()
+addWorksheet(wb3, "Datacenters")
+writeData(wb3, "Datacenters", final_out3, na.string = "")
+addStyle(wb3, "Datacenters", hdr2, rows=1, cols=seq_len(ncol(final_out3)), gridExpand=TRUE)
+freezePane(wb3, "Datacenters", firstRow=TRUE)
+addFilter(wb3, "Datacenters", row=1, cols=seq_len(ncol(final_out3)))
+
+addWorksheet(wb3, "Confidence Reference")
+writeData(wb3, "Confidence Reference", conf_ref, na.string = "")
+addStyle(wb3, "Confidence Reference", hdr2, rows=1, cols=1:2, gridExpand=TRUE)
+freezePane(wb3, "Confidence Reference", firstRow=TRUE)
+
+saveWorkbook(wb3, FINAL_PATH, overwrite = TRUE)
+cat(sprintf("\nSaved (Phase 3): %s\n  Rows: %d | Columns: %d\n",
+            FINAL_PATH, nrow(final_out3), ncol(final_out3)))

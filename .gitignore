@@ -6,3 +6,29 @@ __pycache__/
 .env
 .venv/
 venv/
+
+# R session artifacts
+.RData
+.Rhistory
+
+# LLM/tool cache directories
+.firecrawl/
+.playwright-mcp/
+
+# Pipeline cache and raw data fetch outputs
+.dc_classify_cache*.json
+.datacenterpolicy_raw.json
+energystar_raw.json
+echo_tmp/
+echo_phase4_targets.csv
+
+# Generated output files (derived from pipeline runs, not source)
+datacenter_merged*.xlsx
+datacenterpolicy_com.xlsx
+dc_bills_analysis.xlsx
+map_bills_export.xlsx
+
+# Generated images
+energy_transition.png
+test_bar.png
+test_line.png

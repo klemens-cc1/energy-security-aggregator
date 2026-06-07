@@ -1,3 +1,5 @@
+import base64
+import re
 import feedparser
 import yaml
 import logging
@@ -51,7 +53,7 @@ def fetch_feed(feed_config: dict) -> tuple[list[dict], bool]:
     """Returns (articles, success) where success=False means the feed failed."""
     name = feed_config["name"]
     url = feed_config["url"]
-    category = ""
+    category = feed_config.get("category", "")
     articles = []
 
     log.info(f"Fetching: {name}")

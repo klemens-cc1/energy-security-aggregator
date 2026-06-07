@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LegiScan Pipeline</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, sans-serif; background: #f0f2f5; color: #222; min-height: 100vh; }
+
+  /* ── Header ── */
+  header {
+    background: #1a2e4a; color: #fff; padding: 0 24px;
+    display: flex; align-items: stretch; gap: 0; height: 52px; position: sticky; top: 0; z-index: 100;
+    box-shadow: 0 2px 8px rgba(0,0,0,.35);
+  }
+  .header-title { font-size: 1rem; font-weight: 600; padding: 0 20px 0 0; display: flex; align-items: center; white-space: nowrap; border-right: 1px solid rgba(255,255,255,.12); margin-right: 8px; }
+  nav { display: flex; align-items: stretch; }
+  .tab-btn {
+    background: none; border: none; color: rgba(255,255,255,.6); font-size: 0.85rem; font-weight: 500;
+    padding: 0 18px; cursor: pointer; border-bottom: 3px solid transparent; transition: color .15s, border-color .15s;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .tab-btn:hover  { color: #fff; }
+  .tab-btn.active { color: #fff; border-bottom-color: #4da6ff; }
+  .tab-badge {
+    background: rgba(255,255,255,.15); color: #fff; font-size: 0.7rem;
+    padding: 1px 6px; border-radius: 8px; font-weight: 600;
+  }
+  .tab-badge.has-items { background: #4da6ff; }
+  #header-right { margin-left: auto; display: flex; align-items: center; font-size: 0.8rem; color: rgba(255,255,255,.5); }
+
+  /* ── Tab panels ── */
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* ── Queue tab ── */
+  #queue-controls {
+    padding: 10px 24px; background: #fff; border-bottom: 1px solid #ddd;
+    display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+  }
+  #queue-controls label { font-size: 0.82rem; color: #555; display: flex; align-items: center; gap: 4px; }
+  #queue-controls select { font-size: 0.82rem; padding: 3px 7px; border: 1px solid #ccc; border-radius: 4px; }
+  #queue-controls input[type=range] { width: 80px; }
+  #queue-controls .sep { color: #ddd; }
+
+  #bulk-bar {
+    padding: 8px 24px; background: #fff8e6; border-bottom: 1px solid #f0e0a0;
+    display: flex; gap: 10px; align-items: center; font-size: 0.82rem; color: #555;
+  }
+  #bulk-bar button {
+    padding: 4px 12px; border-radius: 4px; border: 1px solid #c8a820; background: #fdf5d0;
+    color: #6a5000; cursor: pointer; font-size: 0.82rem; font-weight: 600;
+  }
+  #bulk-bar button:hover { background: #fceea0; }
+
+  #queue-list { padding: 16px 24px; display: flex; flex-direction: column; gap: 10px; }
+  #queue-empty { text-align: center; padding: 60px 24px; color: #999; font-size: 0.9rem; display: none; }
+
+  .card {
+    background: #fff; border: 1px solid #ddd; border-radius: 6px;
+    padding: 14px 16px; display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: start;
+  }
+  .card.reviewed { opacity: 0.4; }
+  .card-header { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-bottom: 5px; }
+  .badge { font-size: 0.68rem; padding: 2px 7px; border-radius: 10px; font-weight: 600; white-space: nowrap; }
+  .badge-state { background: #e8eef5; color: #1a2e4a; }
+  .badge-tag   { background: #eef5e8; color: #2a6b2a; }
+  .badge-conf-high { background: #e8f5e8; color: #1a6a1a; }
+  .badge-conf-mid  { background: #fff5e0; color: #7a5200; }
+  .badge-conf-low  { background: #fde8e8; color: #a02020; }
+  .card-title { font-size: 0.9rem; font-weight: 600; margin-bottom: 4px; line-height: 1.3; }
+  .card-summary {
+    font-size: 0.82rem; color: #444; line-height: 1.5; border: 1px solid #e0e0e0;
+    border-radius: 4px; padding: 7px 8px; background: #fafafa; margin-bottom: 4px;
+    width: 100%; resize: vertical; font-family: inherit; min-height: 44px;
+  }
+  .card-meta { font-size: 0.72rem; color: #999; }
+  .card-meta a { color: #1a6aaa; text-decoration: none; }
+  .card-meta a:hover { text-decoration: underline; }
+  .card-actions { display: flex; flex-direction: column; gap: 5px; min-width: 110px; }
+  .btn-approve { background: #2a6b2a; color: #fff; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.82rem; font-weight: 600; }
+  .btn-approve:hover { background: #1e5020; }
+  .btn-reject  { background: #fff; color: #a02020; border: 1px solid #d08080; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.82rem; }
+  .btn-reject:hover { background: #fdf0f0; }
+  .btn-skip    { background: #fff; color: #666; border: 1px solid #ccc; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.82rem; }
+  .status-label { font-size: 0.72rem; text-align: center; font-weight: 600; padding: 3px 0; }
+  .status-approved { color: #2a6b2a; } .status-rejected { color: #a02020; } .status-skipped { color: #888; }
+
+  /* ── Export bar (bottom of queue) ── */
+  #export-bar {
+    position: sticky; bottom: 0; background: #1a2e4a; color: #fff;
+    padding: 10px 24px; display: none; gap: 12px; align-items: center; font-size: 0.85rem;
+  }
+  #export-bar button { background: #27ae60; color: #fff; border: none; padding: 6px 16px; border-radius: 4px; cursor: pointer; font-weight: 600; }
+  #export-bar button:hover { background: #1e8449; }
+
+  /* ── Stats tab ── */
+  #stats-panel { padding: 24px; }
+  .stat-cards { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 24px; }
+  .stat-card {
+    background: #fff; border: 1px solid #ddd; border-radius: 8px;
+    padding: 16px 20px; min-width: 140px; flex: 1;
+  }
+  .stat-card .label { font-size: 0.75rem; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+  .stat-card .value { font-size: 2rem; font-weight: 700; color: #1a2e4a; line-height: 1; }
+  .stat-card .sub   { font-size: 0.75rem; color: #aaa; margin-top: 4px; }
+
+  .stats-section { background: #fff; border: 1px solid #ddd; border-radius: 8px; margin-bottom: 16px; overflow: hidden; }
+  .stats-section h3 { font-size: 0.82rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: #555; padding: 12px 16px; border-bottom: 1px solid #eee; }
+  .stats-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  .stats-table th { text-align: left; padding: 8px 16px; background: #f8f8f8; color: #666; font-weight: 600; border-bottom: 1px solid #eee; }
+  .stats-table td { padding: 7px 16px; border-bottom: 1px solid #f0f0f0; }
+  .stats-table tr:last-child td { border-bottom: none; }
+  .stats-table .count-cell { text-align: right; font-weight: 600; color: #1a2e4a; }
+  .stats-table .pending-cell { color: #7a5200; }
+  .stats-table .approved-cell { color: #2a6b2a; }
+  .tag-bar { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 16px; }
+  .tag-chip {
+    display: flex; align-items: center; gap: 6px;
+    background: #f0f4ff; border: 1px solid #c8d8f0; border-radius: 6px;
+    padding: 5px 10px; font-size: 0.8rem; color: #1a2e4a;
+  }
+  .tag-chip .cnt { font-weight: 700; }
+
+  #export-action {
+    background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 16px 20px;
+    display: flex; align-items: center; gap: 16px; margin-bottom: 16px; flex-wrap: wrap;
+  }
+  #export-action .export-info { flex: 1; }
+  #export-action .export-title { font-weight: 600; margin-bottom: 3px; }
+  #export-action .export-sub   { font-size: 0.82rem; color: #888; }
+  #btn-export-map { padding: 8px 20px; background: #1a2e4a; color: #fff; border: none; border-radius: 5px; cursor: pointer; font-weight: 600; font-size: 0.85rem; white-space: nowrap; }
+  #btn-export-map:hover { background: #0f1e33; }
+  #btn-export-map:disabled { opacity: 0.5; cursor: not-allowed; }
+  #export-result { font-size: 0.82rem; margin-top: 6px; }
+  #export-result.ok  { color: #2a6b2a; font-weight: 600; }
+  #export-result.err { color: #a02020; }
+
+  /* ── Fetch tab ── */
+  #fetch-panel { padding: 24px; max-width: 540px; }
+  #fetch-panel h2 { font-size: 0.95rem; font-weight: 600; margin-bottom: 16px; color: #1a2e4a; }
+  .fetch-form { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 18px 20px; }
+  .fetch-row { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 12px; }
+  .fetch-row label { font-size: 0.82rem; color: #555; display: flex; flex-direction: column; gap: 3px; flex: 1; min-width: 130px; }
+  .fetch-row select, .fetch-row input[type=text] { font-size: 0.85rem; padding: 6px 8px; border: 1px solid #ccc; border-radius: 4px; }
+  #custom-query-row { display: none; width: 100%; }
+  #btn-fetch { padding: 8px 22px; background: #1a6aaa; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 0.85rem; font-weight: 600; }
+  #btn-fetch:disabled { opacity: 0.5; cursor: not-allowed; }
+  #fetch-progress { font-size: 0.82rem; color: #555; margin-top: 10px; min-height: 20px; }
+  #fetch-progress.done  { color: #2a6b2a; font-weight: 600; }
+  #fetch-progress.error { color: #a02020; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-title">LegiScan Pipeline</div>
+  <nav>
+    <button class="tab-btn active" onclick="switchTab('queue', this)">
+      Queue <span class="tab-badge" id="badge-queue">0</span>
+    </button>
+    <button class="tab-btn" onclick="switchTab('stats', this)">Stats</button>
+    <button class="tab-btn" onclick="switchTab('fetch', this)">Fetch</button>
+  </nav>
+  <div id="header-right"></div>
+</header>
+
+<!-- ── QUEUE TAB ──────────────────────────────────────── -->
+<div id="tab-queue" class="tab-panel active">
+  <div id="queue-controls">
+    <label>State <select id="filter-state"><option value="">All</option></select></label>
+    <label>Tag   <select id="filter-tag"><option value="">All</option></select></label>
+    <label>Min conf
+      <input type="range" id="filter-conf" min="0" max="1" step="0.05" value="0"
+             oninput="document.getElementById('conf-val').textContent=(+this.value).toFixed(2)">
+      <span id="conf-val">0.00</span>
+    </label>
+    <label>Sort
+      <select id="sort-by">
+        <option value="conf-desc">Confidence ↓</option>
+        <option value="conf-asc">Confidence ↑</option>
+        <option value="state">State A–Z</option>
+        <option value="newest">Newest first</option>
+      </select>
+    </label>
+    <span class="sep">|</span>
+    <label style="flex-direction:row"><input type="checkbox" id="show-reviewed"> Show reviewed</label>
+    <button onclick="loadQueue()" style="padding:4px 10px;border:1px solid #ccc;background:#fff;border-radius:4px;cursor:pointer;font-size:0.82rem;">Refresh</button>
+  </div>
+
+  <div id="bulk-bar" style="display:none">
+    <span id="bulk-label"></span>
+    <button onclick="bulkApprove()">Approve all</button>
+    <button onclick="bulkReject()" style="border-color:#d08080;background:#fdf0f0;color:#a02020;">Reject all</button>
+  </div>
+
+  <div id="queue-list"></div>
+  <div id="queue-empty">No bills match the current filter.</div>
+</div>
+
+<!-- ── STATS TAB ──────────────────────────────────────── -->
+<div id="tab-stats" class="tab-panel">
+  <div id="stats-panel">
+    <div class="stat-cards" id="stat-cards"></div>
+
+    <div id="export-action">
+      <div class="export-info">
+        <div class="export-title">Export approved bills → map</div>
+        <div class="export-sub" id="export-sub">Writes approved bills to map/data/bills_pipeline.js</div>
+      </div>
+      <div>
+        <button id="btn-export-map" onclick="exportToMap()">Export to Map</button>
+        <div id="export-result"></div>
+      </div>
+    </div>
+
+    <div class="stats-section">
+      <h3>Bills by State</h3>
+      <table class="stats-table">
+        <thead><tr><th>State</th><th class="count-cell">Pending</th><th class="count-cell">Approved</th><th class="count-cell">Rejected</th></tr></thead>
+        <tbody id="stats-by-state"></tbody>
+      </table>
+    </div>
+
+    <div class="stats-section">
+      <h3>Bills by Tag</h3>
+      <div class="tag-bar" id="stats-by-tag"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── FETCH TAB ──────────────────────────────────────── -->
+<div id="tab-fetch" class="tab-panel">
+  <div id="fetch-panel">
+    <h2>Fetch bills from LegiScan</h2>
+    <div class="fetch-form">
+      <div class="fetch-row">
+        <label>State <select id="fetch-state"></select></label>
+        <label>Topic
+          <select id="fetch-topic" onchange="onTopicChange(this.value)">
+            <option value="data_centers">Data Centers</option>
+            <option value="nuclear">Nuclear</option>
+            <option value="solar_wind">Solar / Wind</option>
+            <option value="transmission">Transmission</option>
+            <option value="storage">Storage</option>
+            <option value="ev_charging">EV Charging</option>
+            <option value="custom">Custom query…</option>
+          </select>
+        </label>
+        <label>Time range
+          <select id="fetch-years">
+            <option value="1">Past year</option>
+            <option value="2" selected>Past 2 years</option>
+            <option value="3">All sessions</option>
+          </select>
+        </label>
+      </div>
+      <div class="fetch-row" id="custom-query-row">
+        <label style="width:100%">Custom query
+          <input type="text" id="fetch-custom" placeholder="e.g. small modular reactor">
+        </label>
+      </div>
+      <button id="btn-fetch" onclick="startFetch()">Fetch Bills</button>
+      <div id="fetch-progress"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Sticky export bar (queue bottom) ── -->
+<div id="export-bar">
+  <span id="export-bar-label"></span>
+  <button onclick="exportToMap()">Export to Map</button>
+</div>
+
+<script>
+const API = "/legiscan/api";
+let allBills = [];
+let decisions = {};
+let _pollTimer = null;
+
+const ALL_STATES = [
+  "AL","AK","AZ","AR","CA","CO","CT","DE","FL","GA","HI","ID",
+  "IL","IN","IA","KS","KY","LA","ME","MD","MA","MI","MN","MS",
+  "MO","MT","NE","NV","NH","NJ","NM","NY","NC","ND","OH","OK",
+  "OR","PA","RI","SC","SD","TN","TX","UT","VT","VA","WA","WV","WI","WY","DC"
+];
+
+// ── Tab switching ──────────────────────────────────────────────────────────
+function switchTab(name, btn) {
+  document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
+  document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+  document.getElementById("tab-" + name).classList.add("active");
+  btn.classList.add("active");
+  if (name === "stats") renderStats();
+}
+
+// ── Queue ──────────────────────────────────────────────────────────────────
+async function loadQueue() {
+  const res = await fetch(`${API}/queue`);
+  allBills = await res.json();
+  renderBadges();
+  renderQueue();
+  populateFilters();
+}
+
+function renderBadges() {
+  const pending = allBills.filter(b => b.review_status === "pending").length;
+  const badge = document.getElementById("badge-queue");
+  badge.textContent = pending;
+  badge.className = "tab-badge" + (pending > 0 ? " has-items" : "");
+  document.getElementById("header-right").textContent =
+    `${pending} pending · ${allBills.filter(b=>b.review_status==="approved").length} approved`;
+}
+
+function populateFilters() {
+  const states = [...new Set(allBills.map(b => b.state))].sort();
+  const sel = document.getElementById("filter-state");
+  const cur = sel.value;
+  while (sel.options.length > 1) sel.remove(1);
+  states.forEach(s => { const o = new Option(s,s); if(s===cur) o.selected=true; sel.add(o); });
+
+  const tags = [...new Set(allBills.flatMap(b=>(b.tags||"").split(",").filter(Boolean)))].sort();
+  const tsel = document.getElementById("filter-tag");
+  const tcur = tsel.value;
+  while (tsel.options.length > 1) tsel.remove(1);
+  tags.forEach(t => { const o = new Option(t,t); if(t===tcur) o.selected=true; tsel.add(o); });
+}
+
+function sorted(bills) {
+  const by = document.getElementById("sort-by").value;
+  return [...bills].sort((a,b) => {
+    if (by === "conf-desc") return (b.confidence||0) - (a.confidence||0);
+    if (by === "conf-asc")  return (a.confidence||0) - (b.confidence||0);
+    if (by === "state")     return (a.state||"").localeCompare(b.state||"");
+    if (by === "newest")    return (b.id||0) - (a.id||0);
+    return 0;
+  });
+}
+
+function filtered() {
+  const state   = document.getElementById("filter-state").value;
+  const tag     = document.getElementById("filter-tag").value;
+  const minConf = +document.getElementById("filter-conf").value;
+  const showRev = document.getElementById("show-reviewed").checked;
+  return allBills.filter(b => {
+    if (!showRev && b.review_status !== "pending") return false;
+    if (state && b.state !== state) return false;
+    if (tag   && !(b.tags||"").includes(tag)) return false;
+    if ((b.confidence||0) < minConf) return false;
+    return true;
+  });
+}
+
+function renderQueue() {
+  const bills = sorted(filtered());
+  const container = document.getElementById("queue-list");
+  const empty = document.getElementById("queue-empty");
+  container.textContent = "";
+
+  if (bills.length === 0) {
+    empty.style.display = "";
+  } else {
+    empty.style.display = "none";
+    bills.forEach(b => container.appendChild(makeCard(b)));
+  }
+
+  // Bulk bar: only show if there's a confidence filter or multiple pending
+  const pending = bills.filter(b => b.review_status === "pending");
+  const bulkBar = document.getElementById("bulk-bar");
+  const minConf = +document.getElementById("filter-conf").value;
+  const approveCount = pending.length;
+  if (approveCount > 1) {
+    bulkBar.style.display = "";
+    const confLabel = minConf > 0 ? ` (conf ≥ ${minConf.toFixed(2)})` : "";
+    document.getElementById("bulk-label").textContent =
+      `${approveCount} pending bills in current view${confLabel}:`;
+  } else {
+    bulkBar.style.display = "none";
+  }
+
+  updateExportBar();
+}
+
+function makeBadge(text, cls) {
+  const s = document.createElement("span");
+  s.className = "badge " + cls;
+  s.textContent = text;
+  return s;
+}
+
+function confCls(c) {
+  return c >= 0.7 ? "badge-conf-high" : c >= 0.4 ? "badge-conf-mid" : "badge-conf-low";
+}
+
+function makeCard(b) {
+  const dec     = decisions[b.id] || {};
+  const summary = dec.summary !== undefined ? dec.summary : (b.summary || "");
+  const status  = dec.status  || b.review_status;
+  const reviewed = status !== "pending";
+
+  const card = document.createElement("div");
+  card.className = "card" + (reviewed ? " reviewed" : "");
+  card.id = "card-" + b.id;
+
+  const left = document.createElement("div");
+  const hdr  = document.createElement("div");
+  hdr.className = "card-header";
+  hdr.appendChild(makeBadge(b.state, "badge-state"));
+  const num = document.createElement("strong"); num.textContent = b.bill_number; hdr.appendChild(num);
+  hdr.appendChild(makeBadge("conf " + (b.confidence||0).toFixed(2), confCls(b.confidence||0)));
+  (b.tags||"").split(",").filter(Boolean).forEach(t => hdr.appendChild(makeBadge(t,"badge-tag")));
+  left.appendChild(hdr);
+
+  const title = document.createElement("div");
+  title.className = "card-title"; title.textContent = b.title || "";
+  left.appendChild(title);
+
+  const ta = document.createElement("textarea");
+  ta.className = "card-summary"; ta.id = "summary-" + b.id;
+  ta.rows = 3; ta.value = summary;
+  left.appendChild(ta);
+
+  const meta = document.createElement("div"); meta.className = "card-meta";
+  const link = document.createElement("a");
+  link.href = b.url || "#"; link.rel = "noopener noreferrer"; link.target = "_blank";
+  link.textContent = "LegiScan ↗"; meta.appendChild(link);
+  left.appendChild(meta);
+  card.appendChild(left);
+
+  const actions = document.createElement("div"); actions.className = "card-actions";
+  if (reviewed) {
+    const lbl = document.createElement("div");
+    lbl.className = "status-label status-" + status; lbl.textContent = status.toUpperCase();
+    actions.appendChild(lbl);
+    const undo = document.createElement("button");
+    undo.className = "btn-skip"; undo.textContent = "Undo";
+    undo.onclick = () => undoDecision(b.id); actions.appendChild(undo);
+  } else {
+    [["Approve","btn-approve","approved"],["Reject","btn-reject","rejected"],["Skip","btn-skip","skipped"]]
+      .forEach(([label,cls,st]) => {
+        const btn = document.createElement("button");
+        btn.className = cls; btn.textContent = label;
+        btn.onclick = () => decide(b.id, st); actions.appendChild(btn);
+      });
+  }
+  card.appendChild(actions);
+  return card;
+}
+
+async function decide(id, status) {
+  const ta = document.getElementById("summary-" + id);
+  const summary = ta ? ta.value : "";
+  decisions[id] = { status, summary };
+  await fetch(`${API}/review`, {
+    method: "POST", headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({ id, status, summary }),
+  });
+  const bill = allBills.find(b => b.id === id);
+  if (bill) { bill.review_status = status; bill.summary = summary; }
+  renderQueue(); renderBadges();
+}
+
+function undoDecision(id) {
+  delete decisions[id];
+  const bill = allBills.find(b => b.id === id);
+  if (bill) bill.review_status = "pending";
+  renderQueue(); renderBadges();
+}
+
+async function bulkApprove() {
+  const pending = sorted(filtered()).filter(b => b.review_status === "pending");
+  if (!confirm(`Approve ${pending.length} bills?`)) return;
+  for (const b of pending) await decide(b.id, "approved");
+}
+
+async function bulkReject() {
+  const pending = sorted(filtered()).filter(b => b.review_status === "pending");
+  if (!confirm(`Reject ${pending.length} bills?`)) return;
+  for (const b of pending) await decide(b.id, "rejected");
+}
+
+function updateExportBar() {
+  const approved = allBills.filter(b => b.review_status === "approved");
+  const bar = document.getElementById("export-bar");
+  document.getElementById("export-bar-label").textContent = `${approved.length} approved bills`;
+  bar.style.display = approved.length > 0 ? "flex" : "none";
+}
+
+// ── Stats ──────────────────────────────────────────────────────────────────
+async function renderStats() {
+  const res  = await fetch(`${API}/stats`);
+  const data = await res.json();
+
+  // Stat cards
+  const cards = document.getElementById("stat-cards");
+  cards.textContent = "";
+  [
+    ["Total Bills",    data.total,    "in pipeline"],
+    ["Pending Review", data.pending,  "awaiting decision"],
+    ["Approved",       data.approved, "ready for map"],
+    ["Rejected",       data.rejected, "filtered out"],
+  ].forEach(([label, val, sub]) => {
+    const c = document.createElement("div"); c.className = "stat-card";
+    const l = document.createElement("div"); l.className = "label"; l.textContent = label;
+    const v = document.createElement("div"); v.className = "value"; v.textContent = val;
+    const s = document.createElement("div"); s.className = "sub"; s.textContent = sub;
+    c.appendChild(l); c.appendChild(v); c.appendChild(s); cards.appendChild(c);
+  });
+
+  // Export sub-label
+  document.getElementById("export-sub").textContent =
+    `${data.approved} approved · ${data.in_pipeline} currently in map pipeline`;
+
+  // By state
+  const tbody = document.getElementById("stats-by-state");
+  tbody.textContent = "";
+  (data.by_state || []).forEach(row => {
+    const tr = document.createElement("tr");
+    ["state","pending","approved","rejected"].forEach((k,i) => {
+      const td = document.createElement("td");
+      td.textContent = row[k] ?? 0;
+      if (i === 0) td.style.fontWeight = "600";
+      if (i === 1) td.className = "count-cell pending-cell";
+      if (i === 2) td.className = "count-cell approved-cell";
+      if (i === 3) td.className = "count-cell";
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+
+  // By tag
+  const tagBar = document.getElementById("stats-by-tag");
+  tagBar.textContent = "";
+  (data.by_tag || []).forEach(([tag, cnt]) => {
+    const chip = document.createElement("div"); chip.className = "tag-chip";
+    const span = document.createElement("span"); span.textContent = tag;
+    const c    = document.createElement("span"); c.className = "cnt"; c.textContent = cnt;
+    chip.appendChild(span); chip.appendChild(c); tagBar.appendChild(chip);
+  });
+}
+
+// ── Export to map ──────────────────────────────────────────────────────────
+async function exportToMap() {
+  document.getElementById("btn-export-map").disabled = true;
+  const res  = await fetch(`${API}/export`, { method: "POST" });
+  const data = await res.json();
+  document.getElementById("btn-export-map").disabled = false;
+
+  if (data.error) {
+    const el = document.getElementById("export-result");
+    el.className = "err"; el.textContent = data.error;
+    return;
+  }
+  const el = document.getElementById("export-result");
+  el.className = "ok";
+  el.textContent = `Done — ${data.new} new, ${data.updated} updated, ${data.total} total in map`;
+  document.getElementById("export-sub").textContent =
+    `${data.total} bills now in map/data/bills_pipeline.js`;
+}
+
+// ── Fetch ──────────────────────────────────────────────────────────────────
+(function() {
+  const sel = document.getElementById("fetch-state");
+  ALL_STATES.forEach(s => sel.add(new Option(s, s)));
+  sel.value = "AL";
+})();
+
+function onTopicChange(val) {
+  document.getElementById("custom-query-row").style.display = val === "custom" ? "" : "none";
+}
+
+async function startFetch() {
+  const state       = document.getElementById("fetch-state").value;
+  const topic       = document.getElementById("fetch-topic").value;
+  const years       = document.getElementById("fetch-years").value;
+  const customQuery = document.getElementById("fetch-custom").value.trim();
+  if (topic === "custom" && !customQuery) { alert("Enter a custom query first."); return; }
+
+  document.getElementById("btn-fetch").disabled = true;
+  setProgress("", `Searching ${state}…`);
+
+  await fetch(`${API}/fetch`, {
+    method: "POST", headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({ state, topic, years, custom_query: customQuery }),
+  });
+  _pollTimer = setInterval(pollFetchStatus, 1500);
+}
+
+async function pollFetchStatus() {
+  const res  = await fetch(`${API}/fetch/status`);
+  const data = await res.json();
+
+  if (data.state === "searching") {
+    setProgress("", `Searching… ${data.query_done}/${data.query_total} queries, ${data.hits} hits`);
+  } else if (data.state === "fetching") {
+    setProgress("", `Fetching bills… ${data.bill_done}/${data.bill_total} (${data.summarized} summarized)`);
+  } else if (data.state === "done") {
+    clearInterval(_pollTimer); _pollTimer = null;
+    document.getElementById("btn-fetch").disabled = false;
+    setProgress("done", `Done — ${data.new} new bills added (${data.skipped} skipped, ${data.total_hits} hits)`);
+    await loadQueue();
+    // Auto-switch to queue tab to show new bills
+    document.querySelectorAll(".tab-btn")[0].click();
+  } else if (data.state === "error") {
+    clearInterval(_pollTimer); _pollTimer = null;
+    document.getElementById("btn-fetch").disabled = false;
+    setProgress("error", data.message || "Fetch failed");
+  }
+}
+
+function setProgress(cls, text) {
+  const el = document.getElementById("fetch-progress");
+  el.className = cls; el.textContent = text;
+}
+
+// ── Shared filter listeners ────────────────────────────────────────────────
+["filter-state","filter-tag","filter-conf","sort-by","show-reviewed"].forEach(id => {
+  const el = document.getElementById(id);
+  el.addEventListener("change", renderQueue);
+  el.addEventListener("input",  renderQueue);
+});
+
+loadQueue();
+</script>
+</body>
+</html>

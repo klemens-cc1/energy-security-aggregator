@@ -82,3 +82,12 @@ feeds:
 
   - name: Data Center Post
     url: https://datacenterpost.com/feed/
+
+  # Cyber, OT, and nuclear incident advisories
+  - name: CISA ICS Advisories
+    url: https://www.cisa.gov/uscert/ics/advisories/advisories.xml
+    category: ics_advisory
+
+  - name: NRC Daily Event Report
+    url: https://www.nrc.gov/public-involve/rss?feed=event
+    category: nrc_event

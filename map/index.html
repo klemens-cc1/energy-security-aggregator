@@ -1,0 +1,1104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CITS Energy Security Map</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Merriweather+Sans:wght@300;400;500;600&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+  <script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
+  <script src="data/states.js"></script>
+  <script src="data/bills_pipeline.js" onerror="window.PIPELINE_BILLS={}"></script>
+  <script src="data/datacenters.js" onerror="window.datacenterData=[];console.warn('datacenters.js not found — run export_datacenters.R first')"></script>
+  <script src="data/county_mw.js" onerror="window.countyMwData=[];console.warn('county_mw.js not found — run export_county_mw.R first')"></script>
+  <style>
+    :root {
+      --red:        #BA0C2F;
+      --charcoal:   #252525;
+      --mid:        #3a3a3a;
+      --gray:       #909090;
+      --light:      #efefef;
+      --white:      #ffffff;
+      --border:     #e0e0e0;
+      --state-fill: #aeaaa4;
+      --state-hover:#9b9690;
+      --state-sel:  #f5e8ea;
+      --inactive:   #f0eeed;
+
+      --font-head: 'Oswald', sans-serif;
+      --font-body: 'Merriweather Sans', sans-serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--light);
+      color: var(--charcoal);
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Header ── */
+    header {
+      flex-shrink: 0;
+      background: var(--charcoal);
+      padding: 0 28px;
+      height: 54px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      border-top: 3px solid var(--red);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+    }
+
+    header .wordmark {
+      font-family: var(--font-head);
+      font-weight: 500;
+      font-size: 1rem;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--red);
+      line-height: 1;
+    }
+
+    header .divider {
+      width: 1px;
+      height: 22px;
+      background: #3a3a3a;
+      flex-shrink: 0;
+    }
+
+    header .subtitle {
+      font-family: var(--font-body);
+      font-size: 0.8rem;
+      font-weight: 300;
+      color: #ccc;
+      letter-spacing: 0.01em;
+    }
+
+    header .institution {
+      font-family: var(--font-head);
+      font-size: 0.58rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #555;
+      margin-top: 3px;
+    }
+
+    header .instruction {
+      margin-left: auto;
+      font-family: var(--font-head);
+      font-size: 0.62rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #555;
+    }
+
+    /* ── Main layout ── */
+    #app {
+      flex: 1;
+      display: flex;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    #map-wrapper {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px 24px;
+      background: var(--white);
+    }
+
+    #map {
+      width: 100%;
+      height: 100%;
+      max-height: calc(100vh - 88px);
+      cursor: grab;
+    }
+    #map:active { cursor: grabbing; }
+
+    /* ── Side panel ── */
+    #panel {
+      width: 0;
+      overflow: hidden;
+      background: var(--white);
+      border-left: 1px solid var(--border);
+      transition: width 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    #panel::before {
+      content: '';
+      display: block;
+      height: 3px;
+      background: var(--red);
+      flex-shrink: 0;
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+    }
+
+    #panel.open { width: 340px; }
+
+    #panel-inner {
+      width: 340px;
+      padding: 24px 22px 20px;
+      overflow-y: auto;
+      flex: 1;
+      margin-top: 4px;
+      transform: translateX(16px);
+      opacity: 0;
+      transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1) 0.05s,
+                  opacity 0.22s ease 0.08s;
+    }
+
+    #panel.open #panel-inner {
+      transform: translateX(0);
+      opacity: 1;
+    }
+
+    #panel-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 4px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    #panel-state-name {
+      font-family: var(--font-head);
+      font-weight: 500;
+      font-size: 1.35rem;
+      line-height: 1.15;
+      color: var(--charcoal);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    #panel-abbr {
+      font-family: var(--font-head);
+      font-size: 0.68rem;
+      color: var(--red);
+      letter-spacing: 0.14em;
+      font-weight: 400;
+      text-transform: uppercase;
+      margin-top: 3px;
+    }
+
+    #panel-close {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--gray);
+      width: 26px;
+      height: 26px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      flex-shrink: 0;
+      margin-left: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: border-color 0.15s, color 0.15s;
+      font-family: var(--font-body);
+    }
+    #panel-close:hover {
+      border-color: var(--red);
+      color: var(--red);
+    }
+
+    /* ── Politics strip ── */
+    #panel-politics {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 2px;
+    }
+
+    .pol-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .pol-role {
+      font-family: var(--font-head);
+      font-size: 0.6rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--gray);
+    }
+
+    .pol-badge {
+      font-family: var(--font-head);
+      font-size: 0.62rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      padding: 1px 6px;
+      line-height: 1.6;
+    }
+    .pol-badge.R { background: #f5e8ea; color: var(--red); }
+    .pol-badge.D { background: #e8eef5; color: #2a5a8c; }
+
+    .market-badge {
+      font-family: var(--font-head);
+      font-size: 0.6rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      padding: 1px 6px;
+      line-height: 1.6;
+    }
+    .market-badge.Regulated   { background: #e8f0e8; color: #2a6b2a; }
+    .market-badge.Deregulated { background: #e8eef5; color: #2a5a8c; }
+    .market-badge.Partial     { background: #f5f0e0; color: #7a5a00; }
+
+    .pipeline-badge {
+      font-family: var(--font-head);
+      font-size: 0.55rem; letter-spacing: 0.5px; text-transform: uppercase;
+      padding: 1px 5px; border-radius: 3px; vertical-align: middle; margin-left: 4px;
+      background: #f0e8f5; color: #6a2a8c; font-weight: 600;
+    }
+
+    .pol-divider {
+      width: 1px;
+      height: 14px;
+      background: var(--border);
+      margin: 0 2px;
+    }
+
+    .field-row {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .field-row:last-child { border-bottom: none; }
+
+    .field-label {
+      font-family: var(--font-head);
+      font-size: 0.65rem;
+      color: var(--red);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      font-weight: 500;
+    }
+    .field-label-link:hover {
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
+    .field-value {
+      font-size: 0.82rem;
+      font-weight: 400;
+      line-height: 1.55;
+      color: var(--charcoal);
+    }
+    .field-value.empty {
+      color: #ccc;
+      font-style: italic;
+      font-size: 0.8rem;
+    }
+
+    /* ── Layer toggle button ── */
+    #dc-toggle {
+      font-family: var(--font-head);
+      font-size: 0.62rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      background: none;
+      border: 1px solid #3a3a3a;
+      color: #666;
+      padding: 3px 10px 3px 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: border-color 0.15s, color 0.15s;
+      flex-shrink: 0;
+    }
+    #dc-toggle:hover { border-color: #666; color: #aaa; }
+    #dc-toggle.active { border-color: var(--red); color: var(--red); }
+    #dc-toggle .dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: #3a3a3a;
+      transition: background 0.15s;
+      flex-shrink: 0;
+    }
+    #dc-toggle.active .dot { background: var(--red); }
+
+    /* ── Map state paths ── */
+    .state {
+      fill: var(--state-fill);
+      stroke: var(--white);
+      stroke-width: 0.8;
+      cursor: pointer;
+      transition: fill 0.14s ease;
+    }
+    .state:hover {
+      fill: var(--state-hover);
+    }
+    .state.selected {
+      fill: var(--state-sel);
+      stroke: var(--red);
+      stroke-width: 1.8;
+    }
+    .state.inactive {
+      fill: var(--inactive);
+      stroke: var(--white);
+      cursor: default;
+      pointer-events: none;
+    }
+
+    /* ── Facility cards (county panel) ── */
+    .facility-card {
+      padding: 10px 0 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    .facility-card:last-child { border-bottom: none; }
+
+    .facility-name {
+      font-family: var(--font-head);
+      font-size: 0.88rem;
+      font-weight: 500;
+      color: var(--charcoal);
+      line-height: 1.3;
+      margin-bottom: 2px;
+    }
+
+    .facility-sub {
+      font-size: 0.74rem;
+      color: var(--gray);
+      line-height: 1.45;
+      margin-bottom: 4px;
+    }
+
+    /* ── Tooltip ── */
+    #tooltip {
+      position: fixed;
+      background: var(--charcoal);
+      color: var(--light);
+      padding: 6px 10px;
+      font-family: var(--font-head);
+      font-size: 0.76rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      pointer-events: none;
+      visibility: hidden;
+      white-space: pre-line;
+      max-width: 260px;
+      border-left: 2px solid var(--red);
+    }
+
+    /* ── Footer / legend ── */
+    #legend {
+      flex-shrink: 0;
+      padding: 6px 24px 8px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-family: var(--font-head);
+      font-size: 0.62rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--gray);
+      border-top: 1px solid var(--border);
+      background: var(--white);
+    }
+
+    #legend-label {
+      font-style: italic;
+      opacity: 0.6;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="wordmark">CITS</div>
+    <div class="institution">Center for International Trade &amp; Security</div>
+  </div>
+  <div class="divider"></div>
+  <div class="subtitle">Energy Security Map</div>
+  <div class="instruction">Click a state to expand</div>
+  <button id="dc-toggle" aria-pressed="false" title="Toggle data center layer">
+    <span class="dot"></span>Data Centers
+  </button>
+</header>
+
+<div id="app">
+  <div id="map-wrapper">
+    <svg id="map" viewBox="0 0 960 600" preserveAspectRatio="xMidYMid meet"></svg>
+  </div>
+
+  <div id="panel">
+    <div id="panel-inner">
+      <div id="panel-header">
+        <div>
+          <div id="panel-state-name"></div>
+          <div id="panel-abbr"></div>
+        </div>
+        <button id="panel-close" aria-label="Close panel">&#x2715;</button>
+      </div>
+      <div id="panel-politics"></div>
+      <div id="panel-fields"></div>
+    </div>
+  </div>
+</div>
+
+<div id="legend">
+  </div>
+
+<div id="tooltip"></div>
+
+<script>
+// States to highlight — all others are grayed out and non-interactive
+const activeStates = new Set([
+  // Southeast
+  "AL","AR","FL","GA","KY","LA","MS","NC","SC","TN",
+  // Northeast / Mid-Atlantic
+  "DE","NH","NJ","NY",
+  // West
+  "AZ","CA","CO","NM","NV",
+  // Midwest
+  "IN","NE",
+]);
+
+const fipsToAbbr = {
+  "01":"AL","02":"AK","04":"AZ","05":"AR","06":"CA","08":"CO","09":"CT",
+  "10":"DE","11":"DC","12":"FL","13":"GA","15":"HI","16":"ID","17":"IL",
+  "18":"IN","19":"IA","20":"KS","21":"KY","22":"LA","23":"ME","24":"MD",
+  "25":"MA","26":"MI","27":"MN","28":"MS","29":"MO","30":"MT","31":"NE",
+  "32":"NV","33":"NH","34":"NJ","35":"NM","36":"NY","37":"NC","38":"ND",
+  "39":"OH","40":"OK","41":"OR","42":"PA","44":"RI","45":"SC","46":"SD",
+  "47":"TN","48":"TX","49":"UT","50":"VT","51":"VA","53":"WA","54":"WV",
+  "55":"WI","56":"WY"
+};
+
+function buildColorScale() {
+  const values = Object.values(stateData)
+    .map(d => d.colorValue)
+    .filter(v => v !== null && v !== undefined);
+
+  if (values.length === 0) return null;
+
+  return d3.scaleSequential()
+    .domain([d3.min(values), d3.max(values)])
+    .interpolator(d3.interpolateRgb("#d0cdc8", "#252525"));
+}
+
+function stateColor(abbr, scale) {
+  if (!scale) return null; // use CSS default (--teal via class)
+  const d = stateData[abbr];
+  if (!d || d.colorValue === null || d.colorValue === undefined) return null;
+  return scale(d.colorValue);
+}
+
+const svg         = d3.select("#map");
+const panel       = document.getElementById("panel");
+const panelName   = document.getElementById("panel-state-name");
+const panelAbbr   = document.getElementById("panel-abbr");
+const panelFields = document.getElementById("panel-fields");
+const tooltip     = document.getElementById("tooltip");
+
+let selectedAbbr   = null;
+let selectedEl     = null;
+let georgiaFeature = null;
+let usCountiesData = null;
+
+const projection = d3.geoAlbersUsa().scale(1300).translate([487.5, 305]);
+const path = d3.geoPath().projection(projection);
+
+const zoom = d3.zoom()
+  .scaleExtent([1, 12])
+  .on("zoom", event => g.attr("transform", event.transform));
+
+// Single group so zoom transform applies to states + mesh together
+const g = svg.append("g");
+svg.call(zoom);
+
+Promise.all([
+  d3.json("https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json"),
+  d3.json("https://cdn.jsdelivr.net/npm/us-atlas@3/counties-10m.json")
+]).then(([us, counties]) => {
+  usCountiesData = counties;
+
+  const states = topojson.feature(us, us.objects.states);
+  const colorScale = buildColorScale();
+
+  // Cache Georgia's feature for bounds calculation
+  georgiaFeature = states.features.find(f => fipsToAbbr[f.id] === "GA");
+
+  g.selectAll(".state")
+    .data(states.features.filter(d => fipsToAbbr[d.id] !== "AK" && fipsToAbbr[d.id] !== "HI"))
+    .join("path")
+      .attr("class", d => {
+        const abbr = fipsToAbbr[d.id];
+        return activeStates.has(abbr) ? "state" : "state inactive";
+      })
+      .attr("d", path)
+      .each(function(d) {
+        const abbr = fipsToAbbr[d.id];
+        if (!activeStates.has(abbr)) return;
+        const c = stateColor(abbr, colorScale);
+        if (c) d3.select(this).style("fill", c);
+      })
+      .on("mouseover", onHover)
+      .on("mousemove", onMove)
+      .on("mouseout",  onOut)
+      .on("click",     onClick);
+
+  // County choropleth layer — above state fills, below everything else
+  g.append("g").attr("id", "county-layer").attr("display", "none");
+  if (window._countyPending) {
+    d3.select("#county-layer").attr("display", null);
+    renderCountyLayer();
+    window._countyPending = false;
+  }
+
+  // DC dots layer (kept for reference, no toggle exposed)
+  g.append("g").attr("id", "dc-layer").attr("display", "none");
+
+  g.append("path")
+    .datum(topojson.mesh(us, us.objects.states, (a, b) => a !== b))
+    .attr("fill", "none")
+    .attr("stroke", "#ffffff")
+    .attr("stroke-width", 0.7)
+    .attr("d", path)
+    .attr("pointer-events", "none");
+
+  if (colorScale) updateLegend(colorScale);
+});
+
+function zoomToGeorgia() {
+  if (!georgiaFeature) return;
+  const [[x0, y0], [x1, y1]] = path.bounds(georgiaFeature);
+  const scale = Math.min(960 / (x1 - x0), 600 / (y1 - y0)) * 0.78;
+  const tx = 480 - scale * (x0 + x1) / 2;
+  const ty = 300 - scale * (y0 + y1) / 2;
+  svg.transition()
+    .duration(700)
+    .ease(d3.easeCubicInOut)
+    .call(zoom.transform, d3.zoomIdentity.translate(tx, ty).scale(scale));
+}
+
+function resetZoom() {
+  svg.transition()
+    .duration(500)
+    .ease(d3.easeCubicInOut)
+    .call(zoom.transform, d3.zoomIdentity);
+}
+
+function onHover(event, d) {
+  const abbr = fipsToAbbr[d.id];
+  const state = stateData[abbr];
+  tooltip.textContent = state ? state.name : abbr;
+  tooltip.style.visibility = "visible";
+}
+
+function onMove(event) {
+  tooltip.style.top  = (event.clientY - 38) + "px";
+  tooltip.style.left = (event.clientX + 14) + "px";
+}
+
+function onOut() {
+  tooltip.style.visibility = "hidden";
+}
+
+function openPanel(abbr, el) {
+  const state = stateData[abbr];
+  if (!state) return;
+
+  document.getElementById("panel-politics").style.display = "";
+  if (selectedAbbr === "GA" && abbr !== "GA") resetZoom();
+
+  selectedAbbr = abbr;
+  selectedEl   = el;
+  d3.selectAll(".state").classed("selected", d => fipsToAbbr[d.id] === abbr);
+
+  if (abbr === "GA") zoomToGeorgia();
+
+  panelName.textContent = state.name;
+  panelAbbr.textContent = abbr;
+
+  // Politics strip
+  const polEl = document.getElementById("panel-politics");
+  while (polEl.firstChild) polEl.removeChild(polEl.firstChild);
+
+  if (state.politics) {
+    const addItem = (role, party) => {
+      if (polEl.childElementCount > 0) {
+        const div = document.createElement("div");
+        div.className = "pol-divider";
+        polEl.appendChild(div);
+      }
+      const item = document.createElement("div");
+      item.className = "pol-item";
+
+      const roleEl = document.createElement("span");
+      roleEl.className = "pol-role";
+      roleEl.textContent = role;
+
+      const badge = document.createElement("span");
+      badge.className = "pol-badge " + party;
+      badge.textContent = party;
+
+      item.appendChild(roleEl);
+      item.appendChild(badge);
+      polEl.appendChild(item);
+    };
+
+    addItem("Governor", state.politics.governor);
+    for (const [chamber, party] of Object.entries(state.politics.chambers)) {
+      addItem(chamber, party);
+    }
+
+    if (state.politics.market) {
+      const div = document.createElement("div");
+      div.className = "pol-divider";
+      polEl.appendChild(div);
+
+      const item = document.createElement("div");
+      item.className = "pol-item";
+
+      const roleEl = document.createElement("span");
+      roleEl.className = "pol-role";
+      roleEl.textContent = "Utility";
+
+      const badge = document.createElement("span");
+      badge.className = "market-badge " + state.politics.market;
+      badge.textContent = state.politics.market;
+
+      item.appendChild(roleEl);
+      item.appendChild(badge);
+      polEl.appendChild(item);
+    }
+  }
+
+  while (panelFields.firstChild) panelFields.removeChild(panelFields.firstChild);
+
+  // Merge hand-curated bills with pipeline bills (pipeline entries are additive, don't overwrite)
+  const pipelineForState = (window.PIPELINE_BILLS || {})[abbr] || {};
+  const allFields = Object.assign({}, state.fields);
+  for (const [k, v] of Object.entries(pipelineForState)) {
+    if (!(k in allFields)) allFields[k] = v;
+  }
+
+  if (Object.keys(allFields).length === 0) {
+    const empty = document.createElement("div");
+    empty.style.cssText = "padding:16px 0;color:#aaa;font-size:0.82rem;font-style:italic;";
+    empty.textContent = "No tracked legislation yet.";
+    panelFields.appendChild(empty);
+  }
+
+  for (const [label, value] of Object.entries(allFields)) {
+    const row = document.createElement("div");
+    row.className = "field-row";
+
+    const lbl = document.createElement("span");
+    lbl.className = "field-label";
+    lbl.textContent = label;
+
+    if (value && value.source === "legiscan") {
+      const badge = document.createElement("span");
+      badge.className = "pipeline-badge";
+      badge.textContent = "pipeline";
+      lbl.appendChild(badge);
+    }
+
+    const val = document.createElement("span");
+    val.className = "field-value";
+    if (value === null || value === undefined) {
+      val.classList.add("empty");
+      val.textContent = "no data";
+    } else if (typeof value === "object" && value.url) {
+      val.textContent = value.text;
+      lbl.style.cursor = "pointer";
+      lbl.title = "Open full bill";
+      lbl.addEventListener("click", () => window.open(value.url, "_blank", "noopener"));
+      lbl.classList.add("field-label-link");
+    } else {
+      val.textContent = value;
+    }
+
+    row.appendChild(lbl);
+    row.appendChild(val);
+    panelFields.appendChild(row);
+  }
+
+  panel.classList.add("open");
+}
+
+function openCountyPanel(d) {
+  if (typeof datacenterData === 'undefined') return;
+
+  const fips       = String(d.id).padStart(5, "0");
+  const countyName = (d.properties && d.properties.name) ? d.properties.name : fips;
+  const stateAbbr  = fipsToAbbr[fips.slice(0, 2)] || "";
+
+  const facilities = datacenterData
+    .filter(f => f.fips === fips)
+    .sort((a, b) => (b.mw || 0) - (a.mw || 0));
+
+  if (!facilities.length) return;
+
+  // Reset any state selection
+  if (selectedAbbr === "GA") resetZoom();
+  selectedAbbr = null;
+  selectedEl   = null;
+  d3.selectAll(".state").classed("selected", false);
+
+  panelName.textContent = countyName + " County";
+  const totalMw = Math.round(facilities.reduce((s, f) => s + (f.mw || 0), 0));
+  panelAbbr.textContent =
+    stateAbbr + "  ·  " + facilities.length +
+    (facilities.length === 1 ? " facility" : " facilities") +
+    "  ·  " + totalMw.toLocaleString() + " MW est.";
+
+  document.getElementById("panel-politics").style.display = "none";
+
+  while (panelFields.firstChild) panelFields.removeChild(panelFields.firstChild);
+
+  facilities.forEach(f => {
+    const card = document.createElement("div");
+    card.className = "facility-card";
+
+    const nameEl = document.createElement("div");
+    nameEl.className = "facility-name";
+    nameEl.textContent = f.n || "Unknown";
+    card.appendChild(nameEl);
+
+    const metaParts = [f.co, f.ci && f.st ? f.ci + ", " + f.st : f.ci].filter(Boolean);
+    if (metaParts.length) {
+      const meta = document.createElement("div");
+      meta.className = "facility-sub";
+      meta.textContent = metaParts.join("  ·  ");
+      card.appendChild(meta);
+    }
+
+    if (f.adr) {
+      const adrEl = document.createElement("div");
+      adrEl.className = "facility-sub";
+      adrEl.style.fontStyle = "italic";
+      adrEl.textContent = f.adr;
+      card.appendChild(adrEl);
+    }
+
+    const rows = [];
+    if (f.mw  != null) rows.push(["Est. Power",     f.mw.toLocaleString() + " MW"]);
+    if (f.sc)          rows.push(["Confidence",      f.sc]);
+    if (f.sqft)        rows.push(["Floor Space",     Number(f.sqft).toLocaleString() + " sq ft"]);
+    if (f.cost)        rows.push(["Annual Cost Est.", "$" + f.cost + "M"]);
+    if (f.util)        rows.push(["Utility",         f.util]);
+    if (f.grid)        rows.push(["Grid Region",     f.grid]);
+    if (f.rto)         rows.push(["RTO / ISO",       f.rto]);
+    if (f.echo_air === "Y") rows.push(["EPA ECHO",   "Air permit on file"]);
+    if (f.campus_n > 1)    rows.push(["Campus",      f.campus_n + "-building campus"]);
+
+    rows.forEach(([label, value]) => {
+      const row = document.createElement("div");
+      row.className = "field-row";
+      const lbl = document.createElement("span");
+      lbl.className = "field-label";
+      lbl.textContent = label;
+      const val = document.createElement("span");
+      val.className = "field-value";
+      val.textContent = value;
+      row.appendChild(lbl);
+      row.appendChild(val);
+      card.appendChild(row);
+    });
+
+    panelFields.appendChild(card);
+  });
+
+  panel.classList.add("open");
+}
+
+function closePanel() {
+  if (selectedAbbr === "GA") resetZoom();
+  selectedAbbr = null;
+  selectedEl   = null;
+  panel.classList.remove("open");
+  d3.selectAll(".state").classed("selected", false);
+  document.getElementById("panel-politics").style.display = "";
+}
+
+function onClick(event, d) {
+  const abbr = fipsToAbbr[d.id];
+  if (selectedAbbr === abbr) {
+    closePanel();
+  } else {
+    openPanel(abbr, event.currentTarget);
+  }
+}
+
+document.getElementById("panel-close").addEventListener("click", closePanel);
+
+// ── County MW choropleth ──────────────────────────────────────────────────────
+function buildCountyScale() {
+  if (typeof countyMwData === 'undefined' || !countyMwData.length) return null;
+  const vals = countyMwData.map(d => d.mw).sort((a, b) => a - b);
+  const cap  = d3.quantile(vals, 0.97); // cap at 97th pct so one outlier doesn't wash out the scale
+  return d3.scaleSequentialSqrt()
+    .domain([0, cap])
+    .interpolator(d3.interpolateRgb("#fce8dc", "#BA0C2F"))
+    .clamp(true);
+}
+
+function renderCountyLayer() {
+  const grp = d3.select("#county-layer");
+  if (grp.empty() || !usCountiesData) return;
+  if (typeof countyMwData === 'undefined' || !countyMwData.length) return;
+
+  const scale   = buildCountyScale();
+  const mwByFips = new Map(countyMwData.map(d => [d.fips, d]));
+  const features = topojson.feature(usCountiesData, usCountiesData.objects.counties).features;
+
+  grp.selectAll("path.county-fill")
+    .data(features)
+    .join("path")
+      .attr("class", "county-fill")
+      .attr("d", path)
+      .attr("fill", d => {
+        const rec = mwByFips.get(String(d.id).padStart(5, "0"));
+        return rec ? scale(rec.mw) : "none";
+      })
+      .attr("stroke", "none")
+      .style("pointer-events", d =>
+        mwByFips.has(String(d.id).padStart(5, "0")) ? "all" : "none"
+      )
+      .style("cursor", d =>
+        mwByFips.has(String(d.id).padStart(5, "0")) ? "pointer" : "default"
+      )
+      .on("click", function(event, d) {
+        event.stopPropagation();
+        openCountyPanel(d);
+      })
+      .on("mouseover", function(event, d) {
+        const rec = mwByFips.get(String(d.id).padStart(5, "0"));
+        if (!rec) return;
+        const name = (d.properties && d.properties.name) ? d.properties.name : d.id;
+        const stateFips = String(d.id).padStart(5, "0").slice(0, 2);
+        const st = fipsToAbbr[stateFips] || "";
+        tooltip.textContent =
+          name + " County" + (st ? ", " + st : "") + "\n" +
+          rec.mw.toLocaleString() + " MW est.  ·  " + rec.n + " facilities";
+        tooltip.style.visibility = "visible";
+      })
+      .on("mousemove", onMove)
+      .on("mouseout",  () => tooltip.style.visibility = "hidden");
+
+  // Subtle county border mesh — only where data exists
+  grp.selectAll("path.county-mesh").remove();
+  grp.append("path")
+    .attr("class", "county-mesh")
+    .datum(topojson.mesh(usCountiesData, usCountiesData.objects.counties, (a, b) => a !== b))
+    .attr("fill", "none")
+    .attr("stroke", "rgba(255,255,255,0.25)")
+    .attr("stroke-width", 0.3)
+    .attr("d", path)
+    .attr("pointer-events", "none");
+}
+
+function updateCountyLegend(active, scale) {
+  document.querySelectorAll(".county-leg").forEach(el => el.remove());
+  if (!active || !scale) return;
+  const legendEl = document.getElementById("legend");
+
+  const sep = document.createElement("span");
+  sep.className = "county-leg";
+  sep.style.cssText = "width:1px;height:14px;background:var(--border);margin:0 6px;";
+  legendEl.appendChild(sep);
+
+  const lbl = document.createElement("span");
+  lbl.className = "county-leg";
+  lbl.style.cssText = "font-style:italic;opacity:0.6;";
+  lbl.textContent = "Estimated MW by county";
+  legendEl.appendChild(lbl);
+
+  const lo = 0, hi = scale.domain()[1];
+  const loSpan = document.createElement("span");
+  loSpan.className = "county-leg";
+  loSpan.textContent = "0";
+
+  const bar = document.createElement("canvas");
+  bar.width = 120; bar.height = 6;
+  bar.className = "county-leg";
+  bar.style.cssText = "width:120px;height:6px;";
+  const ctx = bar.getContext("2d");
+  for (let i = 0; i < 120; i++) {
+    ctx.fillStyle = scale(lo + (hi - lo) * (i / 119));
+    ctx.fillRect(i, 0, 1, 6);
+  }
+
+  const hiSpan = document.createElement("span");
+  hiSpan.className = "county-leg";
+  hiSpan.textContent = Math.round(hi).toLocaleString() + " MW";
+
+  legendEl.appendChild(loSpan);
+  legendEl.appendChild(bar);
+  legendEl.appendChild(hiSpan);
+}
+
+document.getElementById("dc-toggle").addEventListener("click", function() {
+  const active = this.getAttribute("aria-pressed") !== "true";
+  this.setAttribute("aria-pressed", active);
+  this.classList.toggle("active", active);
+
+  const grp = d3.select("#county-layer");
+  if (grp.empty()) {
+    window._countyPending = active;
+  } else {
+    grp.attr("display", active ? null : "none");
+    if (active && grp.selectAll("path.county-fill").empty()) renderCountyLayer();
+  }
+  updateCountyLegend(active, active ? buildCountyScale() : null);
+});
+
+// ── Data center dots (kept, no toggle) ───────────────────────────────────────
+const CONF_TIER = {
+  sec_filing: "high", exact: "high",
+  fuzzy: "medium",
+  investor_supplement_metro_avg:    "medium",
+  investor_supplement_portfolio_avg: "medium",
+  echo_air_permit_heuristic:        "medium",
+};
+
+function dcTier(sc) {
+  if (!sc) return "none";
+  if (CONF_TIER[sc]) return CONF_TIER[sc];
+  if (sc.startsWith("operator_bracket") && sc !== "operator_bracket_unknown") return "low";
+  if (sc === "echo_operator_bracket") return "low";
+  return "none";
+}
+
+const DC_STYLE = {
+  high:   { fill: "#BA0C2F", opacity: 0.82 },
+  medium: { fill: "#d06820", opacity: 0.66 },
+  low:    { fill: "#c89030", opacity: 0.48 },
+  none:   { fill: "#888888", opacity: 0.55 },
+};
+
+function renderDCLayer() {
+  const grp = d3.select("#dc-layer");
+  if (grp.empty() || typeof datacenterData === 'undefined' || !datacenterData.length) return;
+
+  grp.selectAll("circle")
+    .data(datacenterData)
+    .join("circle")
+    .each(function(d) {
+      const pt = projection([+d.lo, +d.la]);
+      if (!pt || isNaN(pt[0]) || isNaN(pt[1])) {
+        d3.select(this).attr("display", "none");
+        return;
+      }
+      const tier  = dcTier(d.sc);
+      const style = DC_STYLE[tier];
+      const r     = Math.max(1.8, Math.sqrt(d.mw || 5) * 0.88);
+      d3.select(this)
+        .attr("display", null)
+        .attr("cx", pt[0])
+        .attr("cy", pt[1])
+        .attr("r",  r)
+        .attr("fill", style.fill)
+        .attr("fill-opacity", style.opacity)
+        .attr("stroke", "#ffffff")
+        .attr("stroke-width", 0.6)
+        .attr("stroke-opacity", 0.7);
+    })
+    .style("cursor", "default")
+    .style("pointer-events", "all")
+    .on("mouseover", function(event, d) {
+      const mwStr = (d.mw != null) ? d.mw + " MW" : "n/a";
+      tooltip.textContent =
+        (d.n || "Unknown") + "\n" +
+        [(d.co || ""), (d.ci || "") + (d.st ? ", " + d.st : "")]
+          .filter(Boolean).join("  ·  ") + "\n" +
+        mwStr + "  ·  " + (d.sc || "");
+      tooltip.style.visibility = "visible";
+    })
+    .on("mousemove", onMove)
+    .on("mouseout",  () => tooltip.style.visibility = "hidden");
+}
+
+function updateDCLegend(active) {
+  document.querySelectorAll(".dc-leg").forEach(el => el.remove());
+  if (!active) return;
+  const legendEl = document.getElementById("legend");
+
+  const sep = Object.assign(document.createElement("span"), { className: "dc-leg" });
+  sep.style.cssText = "width:1px;height:14px;background:var(--border);margin:0 4px;";
+  legendEl.appendChild(sep);
+
+  const lbl = Object.assign(document.createElement("span"), { className: "dc-leg", id: "legend-label" });
+  lbl.textContent = "Estimate confidence";
+  legendEl.appendChild(lbl);
+
+  [
+    { label: "High",   tier: "high"   },
+    { label: "Medium", tier: "medium" },
+    { label: "Low",    tier: "low"    },
+    { label: "None",   tier: "none"   },
+  ].forEach(({ label, tier }) => {
+    const s = DC_STYLE[tier];
+    const wrap = Object.assign(document.createElement("span"), { className: "dc-leg" });
+    wrap.style.cssText = "display:flex;align-items:center;gap:4px;";
+
+    const dot = document.createElement("span");
+    dot.style.cssText = `width:8px;height:8px;border-radius:50%;background:${s.fill};opacity:${s.opacity};flex-shrink:0;`;
+
+    const txt = document.createElement("span");
+    txt.textContent = label;
+
+    wrap.appendChild(dot);
+    wrap.appendChild(txt);
+    legendEl.appendChild(wrap);
+  });
+}
+
+
+function updateLegend(scale) {
+  const [lo, hi] = scale.domain();
+  const legendEl = document.getElementById("legend");
+  while (legendEl.firstChild) legendEl.removeChild(legendEl.firstChild);
+
+  const loSpan = document.createElement("span");
+  loSpan.textContent = lo.toLocaleString();
+
+  const bar = document.createElement("canvas");
+  bar.width = 140;
+  bar.height = 6;
+  bar.style.cssText = "width:140px;height:6px;";
+  const ctx = bar.getContext("2d");
+  for (let i = 0; i < 140; i++) {
+    ctx.fillStyle = scale(lo + (hi - lo) * (i / 139));
+    ctx.fillRect(i, 0, 1, 6);
+  }
+
+  const hiSpan = document.createElement("span");
+  hiSpan.textContent = hi.toLocaleString();
+
+  legendEl.appendChild(loSpan);
+  legendEl.appendChild(bar);
+  legendEl.appendChild(hiSpan);
+}
+</script>
+</body>
+</html>

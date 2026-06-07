@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CITS Energy Security Map</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Merriweather+Sans:wght@300;400;500;600&family=Oswald:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+  <script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
+  <script>
+// politics: { governor: "R"|"D", chambers: { ... }, market: "Regulated"|"Deregulated"|"Partial" }
+// Nebraska is unicameral — chambers has one entry: "Legislature"
+// Reflects composition as of early 2025 session
+
+const stateData = {
+  AL: { name: "Alabama", colorValue: null,
+    politics: { governor: "R", chambers: { "Senate": "R", "House": "R" }, market: "Regulated" },
+    fields: {
+      "SJR 89": { text: "Urges the governor and relevant State agencies to recognize the value of spent nuclear fuel and take actions toward its development.",                                                                                                                                                                                                                                                  url: "https://alison.legislature.state.al.us/files/pdf/SearchableInstruments/2026RS/SJR89-enr.pdf" },
+      "S 304":  { text: "Creates the State Energy Infrastructure Fund and provides that the authority shall have specified powers, including making loans or providing other financial assistance to electric providers.",                                                                                                                                                                                        url: "https://alison.legislature.state.al.us/files/pdf/SearchableInstruments/2026RS/SB304-eng.pdf" },
+      "H 163":  { text: "Enables local governments to allow private financing of qualified energy projects.",                                                                                                                                                                                                                                                                                                  url: "https://alison.legislature.state.al.us/files/pdf/SearchableInstruments/2026RS/FiscalNotes/FN-JPXM5NF-1.pdf" },
+  }},
+  AK: { name: "Alaska",               colorValue: null, politics: null, fields: {} },
+  AZ: { name: "Arizona", colorValue: null,
+    politics: { governor: "D", chambers: { "Senate": "R", "House": "R" }, market: "Regulated" },
+    fields: {
+      "HCM 2014": { text: "Urges the State Corporation Commission to ensure reliable and affordable utility services, to ensure that the State grid is powered by affordable and reliable energy generation, and to prevent regulated utilities from going Net Zero and shutting down the State's critical dispatchable sources of energy generation and replacing them with costly, intermittent and unreliable solar, wind and battery storage.", url: "https://www.azleg.gov/legtext/57leg/1r/bills/hcm2014p.pdf" },
+  }},
+  AR: { name: "Arkansas", colorValue: null,
+    politics: { governor: "R", chambers: { "Senate": "R", "House": "R" }, market: "Regulated" },
+    fields: {
+      "H 1572": { text: "Creates a technical feasibility study on new nuclear energy generation in the state.", url: "https://arkleg.state.ar.us/Bills/Detail?id=hb1572&ddBienniumSession=2025%2F2025R" },
+  }},
+  CA: { name: "California", colorValue: null,
+    politics: { governor: "D", chambers: { "Senate": "D", "Assembly": "D" }, market: "Partial" },
+    fields: {
+      "S 80": { text: "Requires the State Energy Resources Conservation and Development Commission to administer the initiative and provide financial incentives for projects that advance research and development into fusion energy, accelerate the deployment of new research and technology capabilities that support the commercialization of fusion energy, or achieve the initiative's goal of delivering the world's first fusion energy pilot project in the state by the 2040s.", url: "https://legiscan.com/CA/text/SB80/id/3271975" },
+  }},
+  CO: { name: "Colorado", colorValue: null,
+    politics: { governor: "D", chambers: { "Senate": "D", "House": "D" }, market: "Regulated" },
+    fields: {
+      "H 1292": { text: "Allows a transmission developer to locate high voltage transmission lines within a State highway right of way. Provides that the Department of Transportation may impose surcharges on a developer, requires a developer to consider development sites in a specified order of priority, requires the State Energy Office and the State Electric Transmission Authority, through a public-private partnership, to study corridors suitable for high voltage transmission line development.", url: "https://leg.colorado.gov/bill_amendments/2876/download" },
+  }},
+  CT: { name: "Connecticut",          colorValue: null, politics: null, fields: {} },
+  DE: { name: "Delaware", colorValue: null,
+    politics: { governor: "D", chambers: { "Senate": "D", "House": "D" }, market: "Deregulated" },
+    fields: {
+      "SJR 3":  { text: "Directs all electric public utilities in State to participate in a study to assess and analyze the costs and benefits of the adoption of energy storage systems, and directs the State sustainable energy utility to conduct a pilot program to develop and deploy pilot projects involving battery storage systems.",                                                                         url: "https://legiscan.com/DE/bill/SJR3/2025" },
+      "HR 3":   { text: "Directs all electric utilities in Delaware to participate in an analysis of the potential for adoption of grid-enhancing technologies, including benefits, cost burdens and cost shifting, feasibility and barriers to adoption.",                                                                                                                                                           url: "https://legis.delaware.gov/BillDetail/142422" },
+      "SCR 18": { text: "Establishes the Delaware Nuclear Energy Feasibility Task Force to examine the feasibility, economic impact, regulatory considerations, energy reliability, and environmental implications of deploying Small Modular Reactors (SMRs) in Delaware.",                                                                                                                                          url: "https://legis.delaware.gov/json/BillDetail/GenerateHtmlDocument?legislationId=141966&legislationTypeId=3&docTypeId=2&legislationName=SCR18" },
+  }},
+  DC: { name: "District of Columbia", colorValue: null, politics: null, fields: {} },
+  FL: { name: "Florida", colorValue: null,
+    politics: { governor: "R", chambers: { "Senate": "R", "House": "R" }, market: "Regulated" },
+    fields: {
+      "S 484": { text: "Specifies that local governments maintain authority over comprehensive planning and land development regulations relating to large load customers and defines the term \"data center\".", url: "https://www.flsenate.gov/Session/Bill/2026/484" },
+  }},
+  GA: { name: "Georgia", colorValue: null,
+    politics: { governor: "R", chambers: { "Senate": "R", "House": "R" }, market: "Regulated" },
+    fields: {
+      "S 13":            { text: "Authorizes the State Environmental Finance Authority to finance and perform duties relating to natural gas facilities and conversion of electrical lines. In areas where private companies have not been granted a monopoly on supplying natural gas, the Georgia Environmental Finance Authority may provide funding to support the natural gas industry. Also covers converting above-ground transmission lines to underground lines.", url: "https://www.legis.ga.gov/api/legislation/document/20252026/229973" },
+      "SR 482":          { text: "Urges the Georgia Public Service Commission to create a study committee for the purpose of making recommendations to the Senate with regard to how the state can use advanced nuclear reactors to increase power generation and economic development.",                                                                                                                              url: "https://legiscan.com/GA/text/SR482/id/3409358" },
+      "H 1323 (Failed)": { text: "Would have required all new data centers in the state to be hybrid powered, meaning it would need to get its electricity from solar or other renewable energy sources.",                                                                                                                                                                                                      url: "https://www.legis.ga.gov/api/legislation/document/20252026/242741" },
+  }},
+  HI: { name: "Hawaii",        colorValue: null, politics: null, fields: {} },
+  ID: { name: "Idaho",         colorValue: null, politics: null, fields: {} },
+  IL: { name: "Illinois",      colorValue: null, politics: null, fields: {} },
+  IN: { name: "Indiana", colorValue: null,
+    politics: { governor: "R", chambers: { "Senate": "R", "House": "R" }, market: "Regulated" },
+    fields: {
+      "HCR 3": { text: "Urges regional transmission organizations, the Federal Energy Regulatory Commission, the U.S. Department of Energy, the North American Electric Reliability Corporation, and the U.S. Congress to take actions necessary to enact reform processes to expedite the approval of electric transmission and generation projects.", url: "https://iga.in.gov/pdf-documents/124/2025/house/resolutions/HC0003/HC0003.01.INTR.pdf" },
+      "S 423": { text: "Establishes the Small Modular Nuclear Reactor Partnership Pilot Program for the purpose of providing a reliable source of electricity to meet the growing demand for electric utility service. Provides that an eligible utility seeking to develop a project with one or more eligible partners may petition the commission.",                url: "https://iga.in.gov/legislative/2025/bills/senate/423/details" },
+  }},
+  IA: { name: "Iowa",          colorValue: null, politics: null, fields: {} },
+  KS: { name: "Kansas",        colorValue: null, politics: null, fields: {} },
+  KY: { name: "Kentucky", colorValue: null,
+    politics: { governor: "D", chambers: { "Senate": "R", "House": "R" }, market: "Regulated" },
+    fields: {
+      "HCR 22": { text: "Declares that nuclear power generation is a clean baseload electricity source, and that adding nuclear power to the Commonwealth's energy portfolio would result in a more reliable electric grid.",                                                                                                                                                                                      url: "https://apps.legislature.ky.gov/recorddocuments/bill/25RS/hcr22/orig_bill.pdf" },
+      "S 179":  { text: "Creates and implements the Nuclear Energy Development Grant Program for the advancement and location of nuclear energy-related projects.",                                                                                                                                                                                                                                              url: "https://legiscan.com/KY/text/SB179/2025" },
+      "S 57":   { text: "Creates and implements the Nuclear Reactor Site Readiness Pilot Program to facilitate the application for early site permits, construction permits or combined operating licenses from the U.S. Nuclear Regulatory Commission. Requires the authority to recommend funding of up to one-third of actual costs to eligible applicants.",                                                   url: "https://apps.legislature.ky.gov/recorddocuments/bill/26RS/sb57/orig_bill.pdf" },
+      "SCR 66": { text: "Urges the University of Kentucky and the University of Louisville to explore opportunities to participate in the U.S. Department of Energy's Nuclear Energy University Program and encourages collaboration with the U.S. Department of War.",                                                                                                                                           url: "https://apps.legislature.ky.gov/record/26rs/scr66.html" },
+      "H 398":  { text: "Provides that a utility shall provide the Public Service Commission with evidence of all known costs of retiring an electric generating unit and demonstrate that cost savings will occur.",                                                                                                                                                                                            url: "https://apps.legislature.ky.gov/record/26rs/hb398.html" },
+  }},
+  LA: { name: "Louisiana", colorValue: null,
+    politics: { governor: "R", chambers: { "Senate": "R", "House": "R" }, market: "Regulated" },
+    fields: {
+      "SR 195": { text: "Creates a task force to study and make recommendations that promote energy self-generation, industrial microgrids, and expedited permitting in the state.",                                                                                                                                                                                                                             url: "https://www.legis.la.gov/Legis/ViewDocument.aspx?d=1424542" },
+      "S 127":  { text: "Authorizes the Secretary of the Department of Environmental Quality to institute a federal permitting parity program for advanced nuclear power generation (SMR) applications submitted by electric public utilities.",                                                                                                                                                                  url: "https://www.legis.la.gov/legis/BillInfo.aspx?s=25rs&b=SB127&sbi=y" },
+      "HR 265": { text: "Directs the State Public Service Commission to explore technology, policy, and cost recovery mechanisms to harden the State electrical grid against electromagnetic threats.",                                                                                                                                                                                                         url: "https://www.legis.la.gov/legis/BillInfo.aspx?s=25rs&b=HR265&sbi=y" },
+      "H 459":  { text: "Outlines permitting processes for renewable energy batteries and wind energy projects, along with specifying jurisdictional authority, permitting processes, and facility siting requirements for solar projects.",                                                                                                                                                                      url: "https://www.billtrack50.com/billdetail/1882625" },
+  }},
+  ME: { name: "Maine",         colorValue: null, politics: null, fields: {} },
+  MD: { name: "Maryland",      colorValue: null, politics: null, fields: {} },
+  MA: { name: "Massachusetts", colorValue: null, politics: null, fields: {} },
+  MI: { name: "Michigan",      colorValue: null, politics: null, fields: {} },
+  MN: { name: "Minnesota",     colorValue: null, politics: null, fields: {} },
+  MS: { name: "Mississippi", colorValue: null,
+    politics: { governor: "R", chambers: { "Senate": "R", "House": "R" }, market: "Regulated" },
+    fields: {
+      "H 1393": { text: "Creates a State Energy Infrastructure Fund that allows the state development authority to issue grants for substations, switchgear, transmission infrastructure, and pipeline infrastructure.", url: "https://legiscan.com/MS/bill/HB1393/2026" },
+      "S 2527": { text: "Requires decommissioning of any solar power facility that is larger than 5 MW.",                                                                                                               url: "https://billstatus.ls.state.ms.us/documents/2026/html/SB/2500-2599/SB2527IN.htm" },
+      "S 3116": { text: "Reclassifies battery storage as a type of project eligible for tax exemptions.",                                                                                                               url: "https://billstatus.ls.state.ms.us/documents/2026/html/SB/3100-3199/SB3116IN.htm" },
+  }},
+  MO: { name: "Missouri",      colorValue: null, politics: null, fields: {} },
+  MT: { name: "Montana",       colorValue: null, politics: null, fields: {} },
+  NE: { name: "Nebraska", colorValue: null,
+    politics: { governor: "R", chambers: { "Legislature": "R" }, market: "Regulated" },
+    fields: {
+      "L 43": { text: "Defines and redefines terms, changes provisions relating to notice and certification requirements for electric generation facilities, transmission lines, and privately developed renewable energy generation facilities located near military installations.", url: "https://nebraskalegislature.gov/FloorDocs/109/PDF/CS/LB43.pdf" },
+  }},
+  NV: { name: "Nevada", colorValue: null,
+    politics: { governor: "R", chambers: { "Senate": "D", "Assembly": "D" }, market: "Regulated" },
+    fields: {
+      "S 132": { text: "Makes an appropriation to the State Clean Energy Fund for securing and implementing grants for qualified clean energy projects, including costs associated with providing bridge or gap funding, providing technical support to State and local agencies, and staffing and administering the State Clean Energy Fund.", url: "https://www.leg.state.nv.us/App/NELIS/REL/83rd2025/Bill/12077/Overview" },
+  }},
+  NH: { name: "New Hampshire", colorValue: null,
+    politics: { governor: "R", chambers: { "Senate": "R", "House": "R" }, market: "Deregulated" },
+    fields: {
+      "HCR 2": { text: "Calls for policymakers to support nuclear energy initiatives and projects to ensure the United States remains a leader in nuclear technology.", url: "https://legiscan.com/NH/text/HCR2/id/3040036" },
+  }},
+  NJ: { name: "New Jersey", colorValue: null,
+    politics: { governor: "D", chambers: { "Senate": "D", "Assembly": "D" }, market: "Deregulated" },
+    fields: {
+      "S 3308": { text: "Relates to certain grid supply solar facilities and energy storage facilities. Provides that an electric public utility shall not unreasonably delay the processing of any complete interconnection application and that a grid supply solar facility shall be compensated for electricity supplied based on the point of interconnection.", url: "https://pub.njleg.gov/Bills/2024/S3500/3308_R1.HTM" },
+      "A 5267": { text: "Requires the Board of Public Utilities to procure and incentivize transmission-scale energy storage. Provides that a transmission-scale energy storage system qualified by completing a Surplus Interconnection Study shall obtain the associated Capacity Interconnection Rights through PJM.",                                              url: "https://www.njleg.state.nj.us/bill-search/2024/A5267/bill-text?f=A5500&n=5267_U1" },
+  }},
+  NM: { name: "New Mexico", colorValue: null,
+    politics: { governor: "D", chambers: { "Senate": "D", "House": "D" }, market: "Regulated" },
+    fields: {
+      "H 128": { text: "Relates to public finance, creates the local solar access fund in the New Mexico Finance Authority, provides grants for solar energy systems, requires the New Mexico Finance Authority to establish rules, makes an appropriation.", url: "https://www.nmlegis.gov/Legislation/Legislation?Chamber=H&LegType=B&LegNo=128&year=25" },
+  }},
+  NY: { name: "New York", colorValue: null,
+    politics: { governor: "D", chambers: { "Senate": "D", "Assembly": "D" }, market: "Deregulated" },
+    fields: {
+      "S 2417": { text: "Enacts the \"Coal to Gas Plant Conversion and Redevelopment Blueprint Act\", requires the development of a blueprint to guide the replacement and redevelopment of the State's coal burning facilities and their sites by a specified year.", url: "https://www.nysenate.gov/legislation/bills/2025/S2417/" },
+  }},
+  NC: { name: "North Carolina", colorValue: null,
+    politics: { governor: "D", chambers: { "Senate": "R", "House": "R" }, market: "Regulated" },
+    fields: {
+      "H 638 (Pending)": { text: "Assigns the cost of new data centers, electric vehicle charging stations, and associated electricity demands to those who benefit directly from these power supplies.", url: "https://lrs.sog.unc.edu/billsum/h-638-2025-2026" },
+      "S 728 (Pending)": { text: "Requires a permit for utility-scale battery energy storage systems and requires such systems to responsibly decommission upon cessation of activities.",                url: "https://legiscan.com/NC/text/S728/id/3189825" },
+      "S 730 (Pending)": { text: "Expands the clean energy portfolio standard to include existing nuclear and large hydroelectric power facilities.",                                                    url: "https://www.ncleg.gov/BillLookUp/2025/S730" },
+      "H 814 (Pending)": { text: "Promotes the use of advanced conductors and grid enhancing technologies.",                                                                                           url: "https://www.ncleg.gov/BillLookup/2025/H814" },
+  }},
+  ND: { name: "North Dakota",  colorValue: null, politics: null, fields: {} },
+  OH: { name: "Ohio",          colorValue: null, politics: null, fields: {} },
+  OK: { name: "Oklahoma",      colorValue: null, politics: null, fields: {} },
+  OR: { name: "Oregon",        colorValue: null, politics: null, fields: {} },
+  PA: { name: "Pennsylvania",  colorValue: null, politics: null, fields: {} },
+  RI: { name: "Rhode Island",  colorValue: null, politics: null, fields: {} },
+  SC: { name: "South Carolina", colorValue: null,
+    politics: { governor: "R", chambers: { "Senate": "R", "House": "R" }, market: "Regulated" },
+    fields: {
+      "S 556":           { text: "Provides for a tax credit for renewable natural gas.",                                                                                                                                                                                                                                                                                                                      url: "https://www.scstatehouse.gov/sess126_2025-2026/bills/556.htm" },
+      "S 784 (Pending)": { text: "Requires the Public Service Commission to support demand-side energy pilot programs and mandate public notice and comment procedures for energy infrastructure projects, especially when eminent domain could affect landowners.",                                                                                                                                              url: "https://www.scstatehouse.gov/sess126_2025-2026/bills/784.htm" },
+      "S 834":           { text: "Recognizes the critical role of natural gas in meeting the state's growing energy needs.",                                                                                                                                                                                                                                                                                   url: "https://www.scstatehouse.gov/sess126_2025-2026/bills/834.htm" },
+      "S 867 (Pending)": { text: "Enacts the Data Center Development Act which establishes the Data Center Development Office, establishes the Data Center Industry Advisory Committee, and requires a siting permit before a data center may be built on a site.",                                                                                                                                             url: "https://www.scstatehouse.gov/sess126_2025-2026/bills/867.htm" },
+      "S 902 (Pending)": { text: "Requires that a certificate be issued by the Public Service Commission before a data center may begin operations and outlines the application and certification processes.",                                                                                                                                                                                                  url: "https://www.scstatehouse.gov/sess126_2025-2026/bills/902.htm" },
+  }},
+  SD: { name: "South Dakota",  colorValue: null, politics: null, fields: {} },
+  TN: { name: "Tennessee", colorValue: null,
+    politics: { governor: "R", chambers: { "Senate": "R", "House": "R" }, market: "Regulated" },
+    fields: {
+      "H 542":           { text: "Developers will be able to choose their own private contractors in the construction of utility infrastructure so long as it is approved by the utility.",                                                                        url: "https://www.capitol.tn.gov/Bills/114/Bill/HB0542.pdf" },
+      "H 2463 (Failed)": { text: "Bring Your Own Generation (BYOG) Act would have required new data centers taking 100 MW or more to derive 50% of their electricity from new clean energy projects that they themselves would finance.", url: "https://legiscan.com/TN/text/HB2463/id/3345446" },
+  }},
+  TX: { name: "Texas",         colorValue: null, politics: null, fields: {} },
+  UT: { name: "Utah",          colorValue: null, politics: null, fields: {} },
+  VT: { name: "Vermont",       colorValue: null, politics: null, fields: {} },
+  VA: { name: "Virginia",      colorValue: null, politics: null, fields: {} },
+  WA: { name: "Washington",    colorValue: null, politics: null, fields: {} },
+  WV: { name: "West Virginia", colorValue: null, politics: null, fields: {} },
+  WI: { name: "Wisconsin",     colorValue: null, politics: null, fields: {} },
+  WY: { name: "Wyoming",       colorValue: null, politics: null, fields: {} },
+};
+
+</script>
+  <style>
+    :root {
+      --red:        #BA0C2F;
+      --charcoal:   #252525;
+      --mid:        #3a3a3a;
+      --gray:       #909090;
+      --light:      #efefef;
+      --white:      #ffffff;
+      --border:     #e0e0e0;
+      --state-fill: #aeaaa4;
+      --state-hover:#9b9690;
+      --state-sel:  #f5e8ea;
+      --inactive:   #f0eeed;
+
+      --font-head: 'Oswald', sans-serif;
+      --font-body: 'Merriweather Sans', sans-serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--light);
+      color: var(--charcoal);
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Header ── */
+    header {
+      flex-shrink: 0;
+      background: var(--charcoal);
+      padding: 0 28px;
+      height: 54px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      border-top: 3px solid var(--red);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+    }
+
+    header .wordmark {
+      font-family: var(--font-head);
+      font-weight: 500;
+      font-size: 1rem;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--red);
+      line-height: 1;
+    }
+
+    header .divider {
+      width: 1px;
+      height: 22px;
+      background: #3a3a3a;
+      flex-shrink: 0;
+    }
+
+    header .subtitle {
+      font-family: var(--font-body);
+      font-size: 0.8rem;
+      font-weight: 300;
+      color: #ccc;
+      letter-spacing: 0.01em;
+    }
+
+    header .institution {
+      font-family: var(--font-head);
+      font-size: 0.58rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #555;
+      margin-top: 3px;
+    }
+
+    header .instruction {
+      margin-left: auto;
+      font-family: var(--font-head);
+      font-size: 0.62rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #555;
+    }
+
+    /* ── Main layout ── */
+    #app {
+      flex: 1;
+      display: flex;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    #map-wrapper {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px 24px;
+      background: var(--white);
+    }
+
+    #map {
+      width: 100%;
+      height: 100%;
+      max-height: calc(100vh - 88px);
+    }
+
+    /* ── Side panel ── */
+    #panel {
+      width: 0;
+      overflow: hidden;
+      background: var(--white);
+      border-left: 1px solid var(--border);
+      transition: width 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    #panel::before {
+      content: '';
+      display: block;
+      height: 3px;
+      background: var(--red);
+      flex-shrink: 0;
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+    }
+
+    #panel.open { width: 340px; }
+
+    #panel-inner {
+      width: 340px;
+      padding: 24px 22px 20px;
+      overflow-y: auto;
+      flex: 1;
+      margin-top: 4px;
+      transform: translateX(16px);
+      opacity: 0;
+      transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1) 0.05s,
+                  opacity 0.22s ease 0.08s;
+    }
+
+    #panel.open #panel-inner {
+      transform: translateX(0);
+      opacity: 1;
+    }
+
+    #panel-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 4px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    #panel-state-name {
+      font-family: var(--font-head);
+      font-weight: 500;
+      font-size: 1.35rem;
+      line-height: 1.15;
+      color: var(--charcoal);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    #panel-abbr {
+      font-family: var(--font-head);
+      font-size: 0.68rem;
+      color: var(--red);
+      letter-spacing: 0.14em;
+      font-weight: 400;
+      text-transform: uppercase;
+      margin-top: 3px;
+    }
+
+    #panel-close {
+      background: none;
+      border: 1px solid var(--border);
+      color: var(--gray);
+      width: 26px;
+      height: 26px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      flex-shrink: 0;
+      margin-left: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: border-color 0.15s, color 0.15s;
+      font-family: var(--font-body);
+    }
+    #panel-close:hover {
+      border-color: var(--red);
+      color: var(--red);
+    }
+
+    /* ── Politics strip ── */
+    #panel-politics {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 2px;
+    }
+
+    .pol-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .pol-role {
+      font-family: var(--font-head);
+      font-size: 0.6rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--gray);
+    }
+
+    .pol-badge {
+      font-family: var(--font-head);
+      font-size: 0.62rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      padding: 1px 6px;
+      line-height: 1.6;
+    }
+    .pol-badge.R { background: #f5e8ea; color: var(--red); }
+    .pol-badge.D { background: #e8eef5; color: #2a5a8c; }
+
+    .market-badge {
+      font-family: var(--font-head);
+      font-size: 0.6rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      padding: 1px 6px;
+      line-height: 1.6;
+    }
+    .market-badge.Regulated   { background: #e8f0e8; color: #2a6b2a; }
+    .market-badge.Deregulated { background: #e8eef5; color: #2a5a8c; }
+    .market-badge.Partial     { background: #f5f0e0; color: #7a5a00; }
+
+    .pol-divider {
+      width: 1px;
+      height: 14px;
+      background: var(--border);
+      margin: 0 2px;
+    }
+
+    .field-row {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .field-row:last-child { border-bottom: none; }
+
+    .field-label {
+      font-family: var(--font-head);
+      font-size: 0.65rem;
+      color: var(--red);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      font-weight: 500;
+    }
+    .field-label-link:hover {
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
+    .field-value {
+      font-size: 0.82rem;
+      font-weight: 400;
+      line-height: 1.55;
+      color: var(--charcoal);
+    }
+    .field-value.empty {
+      color: #ccc;
+      font-style: italic;
+      font-size: 0.8rem;
+    }
+
+    /* ── Map state paths ── */
+    .state {
+      fill: var(--state-fill);
+      stroke: var(--white);
+      stroke-width: 0.8;
+      cursor: pointer;
+      transition: fill 0.14s ease;
+    }
+    .state:hover {
+      fill: var(--state-hover);
+    }
+    .state.selected {
+      fill: var(--state-sel);
+      stroke: var(--red);
+      stroke-width: 1.8;
+    }
+    .state.inactive {
+      fill: var(--inactive);
+      stroke: var(--white);
+      cursor: default;
+      pointer-events: none;
+    }
+
+    /* ── Tooltip ── */
+    #tooltip {
+      position: fixed;
+      background: var(--charcoal);
+      color: var(--light);
+      padding: 6px 10px;
+      font-family: var(--font-head);
+      font-size: 0.76rem;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      pointer-events: none;
+      visibility: hidden;
+      white-space: nowrap;
+      border-left: 2px solid var(--red);
+    }
+
+    /* ── Footer / legend ── */
+    #legend {
+      flex-shrink: 0;
+      padding: 6px 24px 8px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-family: var(--font-head);
+      font-size: 0.62rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--gray);
+      border-top: 1px solid var(--border);
+      background: var(--white);
+    }
+
+    #legend-label {
+      font-style: italic;
+      opacity: 0.6;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="wordmark">CITS</div>
+    <div class="institution">Center for International Trade &amp; Security</div>
+  </div>
+  <div class="divider"></div>
+  <div class="subtitle">Energy Security Map</div>
+  <div class="instruction">Click a state to expand</div>
+</header>
+
+<div id="app">
+  <div id="map-wrapper">
+    <svg id="map" viewBox="0 0 960 600" preserveAspectRatio="xMidYMid meet"></svg>
+  </div>
+
+  <div id="panel">
+    <div id="panel-inner">
+      <div id="panel-header">
+        <div>
+          <div id="panel-state-name"></div>
+          <div id="panel-abbr"></div>
+        </div>
+        <button id="panel-close" aria-label="Close panel">&#x2715;</button>
+      </div>
+      <div id="panel-politics"></div>
+      <div id="panel-fields"></div>
+    </div>
+  </div>
+</div>
+
+<div id="legend">
+  </div>
+
+<div id="tooltip"></div>
+
+<script>
+// States to highlight — all others are grayed out and non-interactive
+const activeStates = new Set([
+  // Southeast
+  "AL","AR","FL","GA","KY","LA","MS","NC","SC","TN",
+  // Northeast / Mid-Atlantic
+  "DE","NH","NJ","NY",
+  // West
+  "AZ","CA","CO","NM","NV",
+  // Midwest
+  "IN","NE",
+]);
+
+const fipsToAbbr = {
+  "01":"AL","02":"AK","04":"AZ","05":"AR","06":"CA","08":"CO","09":"CT",
+  "10":"DE","11":"DC","12":"FL","13":"GA","15":"HI","16":"ID","17":"IL",
+  "18":"IN","19":"IA","20":"KS","21":"KY","22":"LA","23":"ME","24":"MD",
+  "25":"MA","26":"MI","27":"MN","28":"MS","29":"MO","30":"MT","31":"NE",
+  "32":"NV","33":"NH","34":"NJ","35":"NM","36":"NY","37":"NC","38":"ND",
+  "39":"OH","40":"OK","41":"OR","42":"PA","44":"RI","45":"SC","46":"SD",
+  "47":"TN","48":"TX","49":"UT","50":"VT","51":"VA","53":"WA","54":"WV",
+  "55":"WI","56":"WY"
+};
+
+function buildColorScale() {
+  const values = Object.values(stateData)
+    .map(d => d.colorValue)
+    .filter(v => v !== null && v !== undefined);
+
+  if (values.length === 0) return null;
+
+  return d3.scaleSequential()
+    .domain([d3.min(values), d3.max(values)])
+    .interpolator(d3.interpolateRgb("#d0cdc8", "#252525"));
+}
+
+function stateColor(abbr, scale) {
+  if (!scale) return null; // use CSS default (--teal via class)
+  const d = stateData[abbr];
+  if (!d || d.colorValue === null || d.colorValue === undefined) return null;
+  return scale(d.colorValue);
+}
+
+const svg         = d3.select("#map");
+const panel       = document.getElementById("panel");
+const panelName   = document.getElementById("panel-state-name");
+const panelAbbr   = document.getElementById("panel-abbr");
+const panelFields = document.getElementById("panel-fields");
+const tooltip     = document.getElementById("tooltip");
+
+let selectedAbbr  = null;
+let selectedEl    = null;
+let georgiaFeature = null;
+
+const projection = d3.geoAlbersUsa().scale(1300).translate([487.5, 305]);
+const path = d3.geoPath().projection(projection);
+
+// Single group so zoom transform applies to states + mesh together
+const g = svg.append("g");
+
+d3.json("https://cdn.jsdelivr.net/npm/us-atlas@3/states-10m.json").then(us => {
+  const states = topojson.feature(us, us.objects.states);
+  const colorScale = buildColorScale();
+
+  // Cache Georgia's feature for bounds calculation
+  georgiaFeature = states.features.find(f => fipsToAbbr[f.id] === "GA");
+
+  g.selectAll(".state")
+    .data(states.features)
+    .join("path")
+      .attr("class", d => {
+        const abbr = fipsToAbbr[d.id];
+        return activeStates.has(abbr) ? "state" : "state inactive";
+      })
+      .attr("d", path)
+      .each(function(d) {
+        const abbr = fipsToAbbr[d.id];
+        if (!activeStates.has(abbr)) return;
+        const c = stateColor(abbr, colorScale);
+        if (c) d3.select(this).style("fill", c);
+      })
+      .on("mouseover", onHover)
+      .on("mousemove", onMove)
+      .on("mouseout",  onOut)
+      .on("click",     onClick);
+
+  g.append("path")
+    .datum(topojson.mesh(us, us.objects.states, (a, b) => a !== b))
+    .attr("fill", "none")
+    .attr("stroke", "#ffffff")
+    .attr("stroke-width", 0.7)
+    .attr("d", path)
+    .attr("pointer-events", "none");
+
+  if (colorScale) updateLegend(colorScale);
+});
+
+function zoomToGeorgia() {
+  if (!georgiaFeature) return;
+  const [[x0, y0], [x1, y1]] = path.bounds(georgiaFeature);
+  const scale = Math.min(960 / (x1 - x0), 600 / (y1 - y0)) * 0.78;
+  const tx = 480 - scale * (x0 + x1) / 2;
+  const ty = 300 - scale * (y0 + y1) / 2;
+  g.transition()
+    .duration(700)
+    .ease(d3.easeCubicInOut)
+    .attr("transform", `translate(${tx},${ty}) scale(${scale})`);
+}
+
+function resetZoom() {
+  g.transition()
+    .duration(500)
+    .ease(d3.easeCubicInOut)
+    .attr("transform", "translate(0,0) scale(1)");
+}
+
+function onHover(event, d) {
+  const abbr = fipsToAbbr[d.id];
+  const state = stateData[abbr];
+  tooltip.textContent = state ? state.name : abbr;
+  tooltip.style.visibility = "visible";
+}
+
+function onMove(event) {
+  tooltip.style.top  = (event.clientY - 38) + "px";
+  tooltip.style.left = (event.clientX + 14) + "px";
+}
+
+function onOut() {
+  tooltip.style.visibility = "hidden";
+}
+
+function openPanel(abbr, el) {
+  const state = stateData[abbr];
+  if (!state) return;
+
+  if (selectedAbbr === "GA" && abbr !== "GA") resetZoom();
+
+  selectedAbbr = abbr;
+  selectedEl   = el;
+  d3.selectAll(".state").classed("selected", d => fipsToAbbr[d.id] === abbr);
+  if (el) d3.select(el).raise();
+
+  if (abbr === "GA") zoomToGeorgia();
+
+  panelName.textContent = state.name;
+  panelAbbr.textContent = abbr;
+
+  // Politics strip
+  const polEl = document.getElementById("panel-politics");
+  while (polEl.firstChild) polEl.removeChild(polEl.firstChild);
+
+  if (state.politics) {
+    const addItem = (role, party) => {
+      if (polEl.childElementCount > 0) {
+        const div = document.createElement("div");
+        div.className = "pol-divider";
+        polEl.appendChild(div);
+      }
+      const item = document.createElement("div");
+      item.className = "pol-item";
+
+      const roleEl = document.createElement("span");
+      roleEl.className = "pol-role";
+      roleEl.textContent = role;
+
+      const badge = document.createElement("span");
+      badge.className = "pol-badge " + party;
+      badge.textContent = party;
+
+      item.appendChild(roleEl);
+      item.appendChild(badge);
+      polEl.appendChild(item);
+    };
+
+    addItem("Governor", state.politics.governor);
+    for (const [chamber, party] of Object.entries(state.politics.chambers)) {
+      addItem(chamber, party);
+    }
+
+    if (state.politics.market) {
+      const div = document.createElement("div");
+      div.className = "pol-divider";
+      polEl.appendChild(div);
+
+      const item = document.createElement("div");
+      item.className = "pol-item";
+
+      const roleEl = document.createElement("span");
+      roleEl.className = "pol-role";
+      roleEl.textContent = "Utility";
+
+      const badge = document.createElement("span");
+      badge.className = "market-badge " + state.politics.market;
+      badge.textContent = state.politics.market;
+
+      item.appendChild(roleEl);
+      item.appendChild(badge);
+      polEl.appendChild(item);
+    }
+  }
+
+  while (panelFields.firstChild) panelFields.removeChild(panelFields.firstChild);
+
+  for (const [label, value] of Object.entries(state.fields)) {
+    const row = document.createElement("div");
+    row.className = "field-row";
+
+    const lbl = document.createElement("span");
+    lbl.className = "field-label";
+    lbl.textContent = label;
+
+    const val = document.createElement("span");
+    val.className = "field-value";
+    if (value === null || value === undefined) {
+      val.classList.add("empty");
+      val.textContent = "no data";
+    } else if (typeof value === "object" && value.url) {
+      val.textContent = value.text;
+      lbl.style.cursor = "pointer";
+      lbl.title = "Open full bill";
+      lbl.addEventListener("click", () => window.open(value.url, "_blank", "noopener"));
+      lbl.classList.add("field-label-link");
+    } else {
+      val.textContent = value;
+    }
+
+    row.appendChild(lbl);
+    row.appendChild(val);
+    panelFields.appendChild(row);
+  }
+
+  panel.classList.add("open");
+}
+
+function closePanel() {
+  if (selectedAbbr === "GA") resetZoom();
+  selectedAbbr = null;
+  selectedEl   = null;
+  panel.classList.remove("open");
+  d3.selectAll(".state").classed("selected", false);
+}
+
+function onClick(event, d) {
+  const abbr = fipsToAbbr[d.id];
+  if (selectedAbbr === abbr) {
+    closePanel();
+  } else {
+    openPanel(abbr, event.currentTarget);
+  }
+}
+
+document.getElementById("panel-close").addEventListener("click", closePanel);
+
+function updateLegend(scale) {
+  const [lo, hi] = scale.domain();
+  const legendEl = document.getElementById("legend");
+  while (legendEl.firstChild) legendEl.removeChild(legendEl.firstChild);
+
+  const loSpan = document.createElement("span");
+  loSpan.textContent = lo.toLocaleString();
+
+  const bar = document.createElement("canvas");
+  bar.width = 140;
+  bar.height = 6;
+  bar.style.cssText = "width:140px;height:6px;";
+  const ctx = bar.getContext("2d");
+  for (let i = 0; i < 140; i++) {
+    ctx.fillStyle = scale(lo + (hi - lo) * (i / 139));
+    ctx.fillRect(i, 0, 1, 6);
+  }
+
+  const hiSpan = document.createElement("span");
+  hiSpan.textContent = hi.toLocaleString();
+
+  legendEl.appendChild(loSpan);
+  legendEl.appendChild(bar);
+  legendEl.appendChild(hiSpan);
+}
+</script>
+</body>
+</html>
