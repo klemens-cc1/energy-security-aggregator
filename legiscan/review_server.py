@@ -10,7 +10,7 @@ import os
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urlunparse
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -213,7 +213,11 @@ class Handler(BaseHTTPRequestHandler):
 
     def _localhost_origin(self) -> str:
         origin = self.headers.get("Origin", "")
-        if origin.startswith("http://localhost") or origin.startswith("http://127.0.0.1"):
+        try:
+            p = urlparse(origin)
+        except ValueError:
+            p = None
+        if p and p.scheme == "http" and p.hostname in ("localhost", "127.0.0.1", "::1"):
             return origin
         return f"http://localhost:{PORT}"
 
