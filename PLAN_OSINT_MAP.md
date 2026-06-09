@@ -1,6 +1,6 @@
 # OSINT Energy Security Map — Plan
 
-Status: design agreed, not yet built. Date: 2026-06-08.
+Status: P0 done; P2 backbone scripts built 2026-06-09; P1 infra scripts + frontend map not yet built. Design date: 2026-06-08.
 
 ## 1. Repo and project context
 
@@ -11,7 +11,7 @@ Two GitHub repos, kept separate:
 
 Data flow already built: gridstatus runs in aggregator GH Actions -> `push_grid.py` -> `POST /api/osint/grid/ingest` (auth via `INGEST_API_KEY` header `X-API-Key`) -> PostgreSQL `osint_grid_snapshots` -> `GET /api/osint/grid/current` -> dashboard. CISA/NRC RSS feeds flow into the `Article` table, surfaced via `/api/osint/news`.
 
-Resources available: active EIA v2 API key (`.env` `EIA_API_KEY`). Render free tier (ephemeral filesystem, so SQLite does not persist; PostgreSQL is the store).
+Resources available: active EIA v2 API key (`.env` `EIA_API_KEY`). **Action pending: add `EIA_API_KEY` as a GitHub Actions secret in the aggregator repo** — `CURATOR_URL` and `INGEST_API_KEY` are already set; without `EIA_API_KEY` the `eia930-refresh.yml` workflow will fail. Render free tier (ephemeral filesystem, so SQLite does not persist; PostgreSQL is the store).
 
 ## 2. Concept (reframed)
 
@@ -132,30 +132,24 @@ gridstatus:     ISO-native names -> same canonical set
 
 ### Storage: evolve `osint_grid_snapshots` (do NOT add a sibling table)
 
-Current schema (in `osint_models.py`, `OsintGridSnapshot`):
-```
-id PK; iso String(16) NOT NULL; timestamp DateTime NOT NULL; metric String(64) NOT NULL;
-fuel String(64) NOT NULL default ''; value Float NOT NULL; unit String(16); metadata_json Text NOT NULL '{}';
-created_at DateTime NOT NULL. UniqueConstraint(iso, timestamp, metric, fuel) name uq_osint_grid_snapshot.
-```
-Note: `fuel` is NOT NULL default '' deliberately, because PostgreSQL treats NULL != NULL in unique indexes (NULL fuels would not collide). Keep this.
-
-Evolved schema:
+Current schema (in `osint_models.py`, `OsintGridSnapshot`, **built 2026-06-09**):
 ```
 osint_grid_snapshots
   id            PK
-  region        String(16)  NOT NULL        # renamed from iso
-  region_type   String(8)   NOT NULL ''      # 'iso' | 'ba'   (new)
-  source        String(16)  NOT NULL ''      # 'gridstatus' | 'eia930'  (new)
+  region        String(16)  NOT NULL        # EIA/NERC BA code e.g. ERCO, CISO, PJM
+  region_type   String(16)  NOT NULL ''      # 'iso' | 'ba'
+  source        String(32)  NOT NULL ''      # 'gridstatus' | 'eia930'
   timestamp     DateTime    NOT NULL
   metric        String(64)  NOT NULL
-  fuel          String(64)  NOT NULL ''
+  fuel          String(64)  NOT NULL ''      # NOT NULL default '' — PostgreSQL NULL!=NULL in unique indexes
   value         Float       NOT NULL
   unit          String(16)
   metadata_json Text        NOT NULL '{}'
   created_at    DateTime    NOT NULL
-  UNIQUE(region, source, timestamp, metric, fuel)   # source added so both feeds coexist
+  UNIQUE(region, timestamp, metric, fuel, source)   name uq_osint_grid_snapshot
 ```
+
+Migration applied via `_run_migrations()` in `app.py` (per-statement, each in own transaction so failures are isolated): conditional RENAME COLUMN `iso`→`region` via DO block; ADD COLUMN IF NOT EXISTS `region_type`/`source`; DROP CONSTRAINT + CREATE UNIQUE INDEX with `source` added.
 
 ### Ingest endpoint — backward compatible
 
@@ -182,12 +176,12 @@ EIA-930 is keyed by BA code, so the map needs BA territory polygons. EIA/HIFLD p
 
 ### Refresh
 
-New workflow `eia930-refresh.yml` in aggregator, hourly cron offset from the gridstatus one (e.g. `30 * * * *`), runs a new `push_eia930.py` that hits the EIA v2 API with `EIA_API_KEY` and POSTs to the same `/api/osint/grid/ingest` with `source=eia930`. Reuses `INGEST_API_KEY`. No new auth. EIA-930 v2 endpoints to pull: `region-data` (demand D, demand forecast DF, net generation NG, total interchange TI), `fuel-type-data` (net generation by energy source), `interchange-data` (BA-to-BA flows).
+**BUILT 2026-06-09.** `eia930-refresh.yml` cron at `30 * * * *` (offset from gridstatus at `0 * * * *`) runs `push_eia930.py`. Script fetches last 2 hours of EIA-930 data (covers reporting lag of 60-90 min), pushes to `/api/osint/grid/ingest` with `source=eia930`. Pulls: `fuel-type-data` (→`fuel_mix_mwh` rows per BA per fuel) and `region-data` (→`demand_mwh`, `demand_forecast_mwh`, `net_gen_mwh`, `interchange_mwh`). ON CONFLICT DO NOTHING deduplicates overlapping windows across runs. **Requires `EIA_API_KEY` secret in aggregator GH Actions repo — not yet set.**
 
-## 7. Open sub-decisions (settle before coding P2 backbone)
+## 7. Sub-decisions (resolved 2026-06-09)
 
-1. **`iso` -> `region` rename**: table is new with little/no data, so a clean rename now is cheap (one migration: add `region`/`region_type`/`source`, backfill `region` from `iso`, drop `iso`, swap the unique constraint). Recommended: rename now. Alternative is to keep the column named `iso` holding BA codes (misleading). UNDECIDED.
-2. **Retention**: EIA-930 adds ~800 rows/hour (~19k/day) on top of gridstatus; compounds on free-tier Postgres. The `current` query only needs the latest snapshot per region/metric/fuel. Proposed policy: periodic prune keeping raw hourly for 30–90 days. UNDECIDED whether in scope now or deferred.
+1. **`iso` -> `region` rename**: DONE. Migration applied; `fetch_grid.py` updated to emit `region`/`region_type`/`source`; ISO→BA mapping hardcoded in `ISO_TO_BA` dict (ERCOT→ERCO, CAISO→CISO, NYISO→NYIS, ISONE→ISNE, SPP→SWPP). Ingest endpoint accepts legacy `iso` field as fallback.
+2. **Retention**: DEFERRED. ~800 rows/hr from EIA-930 (~19k/day). Proposed: periodic prune keeping 30–90 days of raw hourly. Not in scope until volume becomes a problem on free-tier PostgreSQL.
 
 ## 8. External review reconciliation (2026-06-08)
 
