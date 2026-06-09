@@ -138,7 +138,7 @@ def incidents() -> Any:
         rows = conn.execute(
             """
             SELECT * FROM incidents
-            WHERE date IS NULL OR date >= ?
+            WHERE date >= ?
             ORDER BY date DESC
             LIMIT 1000
             """,
