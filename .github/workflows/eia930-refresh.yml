@@ -1,0 +1,36 @@
+name: EIA-930 Grid Data Refresh
+
+on:
+  schedule:
+    - cron: "30 * * * *"   # :30 each hour, offset from gridstatus push at :00
+  workflow_dispatch:        # allow manual trigger from GitHub Actions UI
+
+jobs:
+  push-eia930:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout aggregator repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-eia930-${{ hashFiles('requirements.txt') }}
+          restore-keys: ${{ runner.os }}-pip-eia930-
+
+      - name: Install dependencies
+        run: pip install python-dotenv
+
+      - name: Fetch and push EIA-930 data
+        env:
+          EIA_API_KEY:    ${{ secrets.EIA_API_KEY }}
+          CURATOR_URL:    ${{ secrets.CURATOR_URL }}
+          INGEST_API_KEY: ${{ secrets.INGEST_API_KEY }}
+        run: python push_eia930.py

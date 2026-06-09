@@ -13,12 +13,23 @@ log = logging.getLogger(__name__)
 
 ISO_CLASSES = {
     "ERCOT": ("gridstatus", "Ercot"),
-    "PJM": ("gridstatus", "PJM"),
+    "PJM":   ("gridstatus", "PJM"),
     "CAISO": ("gridstatus", "CAISO"),
-    "MISO": ("gridstatus", "MISO"),
+    "MISO":  ("gridstatus", "MISO"),
     "NYISO": ("gridstatus", "NYISO"),
     "ISONE": ("gridstatus", "ISONE"),
-    "SPP": ("gridstatus", "SPP"),
+    "SPP":   ("gridstatus", "SPP"),
+}
+
+# Map gridstatus internal names to EIA/NERC BA codes (unified keyspace)
+ISO_TO_BA = {
+    "ERCOT": "ERCO",
+    "PJM":   "PJM",
+    "CAISO": "CISO",
+    "MISO":  "MISO",
+    "NYISO": "NYIS",
+    "ISONE": "ISNE",
+    "SPP":   "SWPP",
 }
 
 
@@ -72,13 +83,15 @@ def _fuel_rows_from_dataframe(iso: str, data: Any, fetched_at: str) -> list[dict
                 continue
             rows.append(
                 {
-                    "iso": iso,
-                    "timestamp": timestamp,
-                    "metric": "fuel_mix_mw",
-                    "fuel": str(key).strip(),
-                    "value": numeric,
-                    "unit": "MW",
-                    "metadata": {"fetched_at": fetched_at},
+                    "region":      ISO_TO_BA.get(iso, iso),
+                    "region_type": "iso",
+                    "source":      "gridstatus",
+                    "timestamp":   timestamp,
+                    "metric":      "fuel_mix_mw",
+                    "fuel":        str(key).strip(),
+                    "value":       numeric,
+                    "unit":        "MW",
+                    "metadata":    {"fetched_at": fetched_at},
                 }
             )
     return rows
