@@ -1,0 +1,27 @@
+name: assets-refresh
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Every Sunday at 03:00 UTC — EIA-860 is annual survey data, weekly refresh is plenty
+    - cron: "0 3 * * 0"
+
+jobs:
+  push-assets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install python-dotenv requests
+
+      - name: Push EIA-860 power plants
+        env:
+          EIA_API_KEY:    ${{ secrets.EIA_API_KEY }}
+          CURATOR_URL:    ${{ secrets.CURATOR_URL }}
+          INGEST_API_KEY: ${{ secrets.INGEST_API_KEY }}
+        run: python push_assets.py
