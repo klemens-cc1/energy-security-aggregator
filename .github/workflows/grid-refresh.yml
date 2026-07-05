@@ -1,9 +1,7 @@
 name: Grid Telemetry Refresh
 
 on:
-  schedule:
-    - cron: "0 * * * *"   # top of every hour
-  workflow_dispatch:        # allow manual trigger from GitHub Actions UI
+  workflow_dispatch:   # manual trigger only — re-enable schedule once gridstatus feeds are stable
 
 jobs:
   push-grid:
