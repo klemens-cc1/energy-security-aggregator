@@ -1,9 +1,7 @@
 name: EIA-930 Grid Data Refresh
 
 on:
-  schedule:
-    - cron: "30 * * * *"   # :30 each hour, offset from gridstatus push at :00
-  workflow_dispatch:        # allow manual trigger from GitHub Actions UI
+  workflow_dispatch:   # manual trigger only — re-enable schedule once EIA-930 feeds are stable
 
 jobs:
   push-eia930:
