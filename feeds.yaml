@@ -13,13 +13,13 @@ feeds:
     url: https://rss.politico.com/energy.xml
 
   - name: The Hill Energy
-    url: https://thehill.com/tag/energy/feed/
+    url: "https://thehill.com/policy/energy-environment/feed/"
 
   - name: Breaking Defense
     url: https://breakingdefense.com/feed/
 
   - name: Lawfare
-    url: https://www.lawfaremedia.org/feed
+    url: "https://www.lawfaremedia.org/feeds/articles"
 
   # Renewables
   - name: RenewableEnergyWorld
@@ -61,17 +61,17 @@ feeds:
     url: https://www.eia.gov/rss/todayinenergy.xml
 
   - name: Hart Energy
-    url: https://www.hartenergy.com/rss/news
+    url: "https://news.google.com/rss/search?q=site:hartenergy.com+when:7d&hl=en-US&gl=US&ceid=US:en"
 
   # Georgia & Southeast US
   - name: The Current GA
     url: https://thecurrentga.org/feed/
 
   - name: 11Alive Atlanta
-    url: https://www.11alive.com/feeds/syndication/rss
+    url: "https://www.11alive.com/feeds/syndication/rss/news"
 
   - name: WSB-TV Atlanta
-    url: https://www.wsbtv.com/news/topstory.rss
+    url: "https://www.wsbtv.com/arc/outboundfeeds/rss/?outputType=xml"
 
   # AI & Data Centers
   - name: Data Center Dynamics
@@ -91,3 +91,73 @@ feeds:
   - name: NRC Daily Event Report
     url: https://www.nrc.gov/public-involve/rss?feed=event
     category: nrc_event
+
+  # Added 2026-10-23 — source diversity (also in Supabase via feed_updates_2026-10.sql)
+  - name: Utility Dive
+    url: https://www.utilitydive.com/feeds/news/
+
+  - name: POWER Magazine
+    url: https://www.powermag.com/feed/
+
+  - name: RTO Insider
+    url: https://www.rtoinsider.com/feed/
+
+  - name: Carbon Brief
+    url: https://www.carbonbrief.org/feed
+
+  - name: Energy Monitor
+    url: https://www.energymonitor.ai/feed/
+
+  - name: Georgia Recorder
+    url: https://georgiarecorder.com/feed/
+
+  - name: Inside Climate News
+    url: https://insideclimatenews.org/feed/
+
+  - name: Natural Gas Intelligence
+    url: https://www.naturalgasintel.com/feed/
+
+  - name: Rigzone
+    url: https://www.rigzone.com/news/rss/rigzone_latest.aspx
+
+  - name: IEEFA
+    url: "https://ieefa.org/rss.xml"
+
+  - name: CSIS Analysis
+    url: "https://news.google.com/rss/search?q=site:csis.org+energy+when:7d&hl=en-US&gl=US&ceid=US:en"
+
+  - name: Columbia SIPA Energy Policy
+    url: "https://news.google.com/rss/search?q=site:energypolicy.columbia.edu+when:7d&hl=en-US&gl=US&ceid=US:en"
+
+  - name: Brookings Institution
+    url: "https://news.google.com/rss/search?q=site:brookings.edu+energy+when:7d&hl=en-US&gl=US&ceid=US:en"
+
+  - name: RAND Corporation
+    url: "https://news.google.com/rss/search?q=site:rand.org+energy+when:7d&hl=en-US&gl=US&ceid=US:en"
+
+  - name: FERC News
+    url: "https://news.google.com/rss/search?q=site:ferc.gov+when:7d&hl=en-US&gl=US&ceid=US:en"
+
+  - name: Canary Media
+    url: "https://www.canarymedia.com/rss"
+
+  - name: Latitude Media
+    url: "https://www.latitudemedia.com/feed"
+
+  - name: Heatmap
+    url: "https://heatmap.news/feeds/feed.rss"
+
+  - name: Oxford Institute for Energy Studies
+    url: "https://www.oxfordenergy.org/publications/feed/"
+
+  - name: GPB News
+    url: "https://www.gpb.org/rss.xml"
+
+  - name: "Federal Register: DOE/FERC/NRC rules"
+    url: "https://www.federalregister.gov/api/v1/documents.rss?conditions%5Bagencies%5D%5B%5D=energy-department&conditions%5Bagencies%5D%5B%5D=federal-energy-regulatory-commission&conditions%5Bagencies%5D%5B%5D=nuclear-regulatory-commission&conditions%5Btype%5D%5B%5D=RULE&conditions%5Btype%5D%5B%5D=PRORULE"
+
+  - name: Atlantic Council EnergySource
+    url: "https://www.atlanticcouncil.org/category/blogs/energysource/feed/"
+
+  - name: IEA
+    url: "https://news.google.com/rss/search?q=site:iea.org+when:7d&hl=en-US&gl=US&ceid=US:en"

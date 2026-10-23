@@ -156,7 +156,8 @@ def deduplicate(articles: list[dict], threshold: float = 0.85) -> list[dict]:
 
 def categorize(article: dict) -> list[str]:
     title = article.get("title", "").lower()
-    padded = f" {title} "
+    # match_text: email-newsletter body (see aggregator.fetch_feed); empty for normal feeds
+    padded = f" {title} {article.get('match_text', '').lower()} "
     matched = []
     for category, keywords in CATEGORIES.items():
         for kw in keywords:

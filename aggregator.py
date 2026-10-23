@@ -1,4 +1,5 @@
 import base64
+import html
 import re
 import feedparser
 import yaml
@@ -74,12 +75,19 @@ def fetch_feed(feed_config: dict) -> tuple[list[dict], bool]:
                 continue
             title = getattr(entry, "title", "(No title)").strip()
             url_ = getattr(entry, "link", "")
+            # Email newsletters (Kill the Newsletter): subject lines rarely carry keywords,
+            # so match on the email body instead; skip sign-up/verification mail.
+            match_text = ""
+            if "kill-the-newsletter.com" in url:
+                if re.search(r"verification code|confirm|welcome to|verify your", title, re.I):
+                    continue
+                body = " ".join(c.value for c in getattr(entry, "content", [])) or getattr(entry, "summary", "")
+                match_text = html.unescape(re.sub(r"<[^>]+>", " ", body))[:20000]
             pub_str = published.isoformat() if published else ""
             # Pull RSS summary and strip any HTML tags
             raw_summary = getattr(entry, "summary", "") or ""
-            import re as _re
-            summary = _re.sub(r'<[^>]+>', '', raw_summary).strip()
-            summary = _re.sub(r'\s+', ' ', summary)[:500]
+            summary = html.unescape(re.sub(r'<[^>]+>', '', raw_summary)).strip()
+            summary = re.sub(r'\s+', ' ', summary)[:500]
             # Discard known boilerplate site descriptions
             _BOILERPLATE = [
                 "energy information administration",
@@ -90,6 +98,9 @@ def fetch_feed(feed_config: dict) -> tuple[list[dict], bool]:
                 "just a moment",
             ]
             if len(summary) < 60 or any(b in summary.lower() for b in _BOILERPLATE):
+                summary = ""
+            # Google News search feeds only repeat "headline + publisher" as the summary
+            if "news.google.com" in url_:
                 summary = ""
             if len(summary) < 60:
                 summary = ""
@@ -102,6 +113,7 @@ def fetch_feed(feed_config: dict) -> tuple[list[dict], bool]:
                 "category": category,
                 "published_at": pub_str,
                 "summary": summary,
+                "match_text": match_text,
             })
 
         log.info(f"  {len(articles)} new articles from {name}")
