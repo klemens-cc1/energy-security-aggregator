@@ -1,6 +1,7 @@
 from difflib import SequenceMatcher
 import logging
 import os
+import re
 import time
 
 log = logging.getLogger(__name__)
@@ -27,7 +28,7 @@ CATEGORIES = {
         "solar", "wind", "hydro", "hydropower", "hydroelectric",
         "geothermal", "renewable", "clean energy", "green energy",
         "offshore wind", "onshore wind", "wind farm", "wind turbine",
-        "solar panel", "solar farm", "photovoltaic", "pv ",
+        "solar panel", "solar farm", "photovoltaic", "pv",
         "battery storage", "energy storage", "grid storage",
         "pumped hydro", "tidal", "wave energy",
     ],
@@ -37,7 +38,7 @@ CATEGORIES = {
         "nuclear generation", "nuclear station", "nuclear industry",
         "reactor", "uranium", "enrichment", "fission",
         "fusion energy", "fusion reactor", "fusion power",
-        "small modular reactor", "smr", "pressurized water reactor",
+        "small modular reactor", "smr", "microreactor", "pressurized water reactor",
         "boiling water reactor", "spent fuel",
         "vogtle", "westinghouse", "electricite de france", "edf",
         "nonproliferation",
@@ -52,7 +53,7 @@ CATEGORIES = {
         "oil price", "gas price", "oil production", "gas production",
         "barrel of oil", "brent crude", "wti crude",
         "petrochemical", "oil major", "oil company",
-        "exxon", "chevron", "bp ", "shell oil", "totalenergies",
+        "exxon", "exxonmobil", "chevron", "bp", "shell oil", "totalenergies",
         "liquefied petroleum", "propane", "natural gas pipeline",
     ],
     "Georgia & Southeast US": [
@@ -154,17 +155,21 @@ def deduplicate(articles: list[dict], threshold: float = 0.85) -> list[dict]:
     return unique
 
 
+# Whole-word matching with an optional plural, so "tva" no longer matches "Hindutva" or
+# "wind" "Windows", while "data center" still matches "data centers". Two-letter
+# keywords get no plural ("bp" must not match "50 bps").
+def _keyword_pattern(keywords: list[str]) -> re.Pattern:
+    alts = [re.escape(k) + ("" if len(k) <= 2 else "(?:s|es)?") for k in keywords]
+    return re.compile(r"\b(?:" + "|".join(alts) + r")\b")
+
+
+_CATEGORY_PATTERNS = {cat: _keyword_pattern(kws) for cat, kws in CATEGORIES.items()}
+
+
 def categorize(article: dict) -> list[str]:
-    title = article.get("title", "").lower()
     # match_text: email-newsletter body (see aggregator.fetch_feed); empty for normal feeds
-    padded = f" {title} {article.get('match_text', '').lower()} "
-    matched = []
-    for category, keywords in CATEGORIES.items():
-        for kw in keywords:
-            if kw in padded:
-                matched.append(category)
-                break
-    return matched
+    text = f"{article.get('title', '')} {article.get('match_text', '')}".lower()
+    return [cat for cat, pattern in _CATEGORY_PATTERNS.items() if pattern.search(text)]
 
 
 def score_article(title: str, category: str, client) -> int:

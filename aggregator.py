@@ -75,6 +75,15 @@ def fetch_feed(feed_config: dict) -> tuple[list[dict], bool]:
                 continue
             title = getattr(entry, "title", "(No title)").strip()
             url_ = getattr(entry, "link", "")
+            # Google News: titles end in " - Publisher"; strip it (helps title dedup), and
+            # for topic feeds ("Google News: LNG") credit the real outlet as the source.
+            source_name = name
+            publisher = (entry.get("source") or {}).get("title", "")
+            if "news.google.com" in url and publisher:
+                if title.endswith(f" - {publisher}"):
+                    title = title[: -len(f" - {publisher}")].strip()
+                if name.startswith("Google News:"):
+                    source_name = publisher
             # Email newsletters (Kill the Newsletter): subject lines rarely carry keywords,
             # so match on the email body instead; skip sign-up/verification mail.
             match_text = ""
@@ -104,12 +113,12 @@ def fetch_feed(feed_config: dict) -> tuple[list[dict], bool]:
                 summary = ""
             if len(summary) < 60:
                 summary = ""
-            save_article(guid, title, url_, name, category, pub_str)
+            save_article(guid, title, url_, source_name, category, pub_str)
             articles.append({
                 "guid": guid,
                 "title": title,
                 "url": url_,
-                "feed_name": name,
+                "feed_name": source_name,
                 "category": category,
                 "published_at": pub_str,
                 "summary": summary,

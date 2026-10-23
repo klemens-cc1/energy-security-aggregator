@@ -161,3 +161,22 @@ feeds:
 
   - name: IEA
     url: "https://news.google.com/rss/search?q=site:iea.org+when:7d&hl=en-US&gl=US&ceid=US:en"
+
+  # Google News topic feeds — big-outlet headlines; items credited to their real outlet
+  - name: "Google News: Energy Security"
+    url: "https://news.google.com/rss/search?q=%28%22energy+security%22+OR+%22power+grid%22+OR+%22electricity+prices%22%29+%28site%3Areuters.com+OR+site%3Abloomberg.com+OR+site%3Awsj.com+OR+site%3Aft.com+OR+site%3Aapnews.com%29+when%3A7d&hl=en-US&gl=US&ceid=US:en"
+
+  - name: "Google News: LNG & Gas"
+    url: "https://news.google.com/rss/search?q=%28LNG+OR+%22natural+gas%22%29+%28site%3Areuters.com+OR+site%3Abloomberg.com+OR+site%3Awsj.com+OR+site%3Aft.com+OR+site%3Aapnews.com%29+when%3A7d&hl=en-US&gl=US&ceid=US:en"
+
+  - name: "Google News: Oil"
+    url: "https://news.google.com/rss/search?q=%28OPEC+OR+%22oil+prices%22+OR+%22crude+oil%22%29+%28site%3Areuters.com+OR+site%3Abloomberg.com+OR+site%3Awsj.com+OR+site%3Aft.com+OR+site%3Aapnews.com%29+when%3A7d&hl=en-US&gl=US&ceid=US:en"
+
+  - name: "Google News: Nuclear"
+    url: "https://news.google.com/rss/search?q=%28%22nuclear+reactor%22+OR+uranium+OR+%22small+modular+reactor%22%29+%28site%3Areuters.com+OR+site%3Abloomberg.com+OR+site%3Awsj.com+OR+site%3Aft.com+OR+site%3Aapnews.com%29+when%3A7d&hl=en-US&gl=US&ceid=US:en"
+
+  - name: "Google News: Data Centers"
+    url: "https://news.google.com/rss/search?q=%22data+center%22+%28power+OR+electricity+OR+grid%29+%28site%3Areuters.com+OR+site%3Abloomberg.com+OR+site%3Awsj.com+OR+site%3Aft.com+OR+site%3Aapnews.com%29+when%3A7d&hl=en-US&gl=US&ceid=US:en"
+
+  - name: "Google News: Georgia Energy"
+    url: "https://news.google.com/rss/search?q=%28%22Georgia+Power%22+OR+%22Georgia+Public+Service+Commission%22+OR+%22Plant+Vogtle%22%29+when%3A7d&hl=en-US&gl=US&ceid=US:en"
