@@ -52,9 +52,10 @@ def summarize(state: str, bill_number: str, title: str, text: str) -> dict | Non
 
     try:
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="openai/gpt-oss-120b",  # gpt-oss reasons first: needs token headroom
             messages=[{"role": "user", "content": prompt}],
-            max_tokens=400,
+            max_tokens=1000,
+            extra_body={"reasoning_effort": "low"},
             temperature=0,
             response_format={"type": "json_object"},
         )

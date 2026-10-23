@@ -196,9 +196,10 @@ def score_article(title: str, category: str, client) -> int:
     try:
         time.sleep(2.5)
         response = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="openai/gpt-oss-120b",  # gpt-oss reasons first: needs token headroom
             messages=[{"role": "user", "content": prompt}],
-            max_tokens=5,
+            max_tokens=200,
+            extra_body={"reasoning_effort": "low"},
             temperature=0,
         )
         text = response.choices[0].message.content.strip()
