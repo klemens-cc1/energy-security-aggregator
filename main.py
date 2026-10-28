@@ -19,7 +19,7 @@ from datetime import datetime, timezone
 from aggregator import aggregate
 from db import get_unsent_articles, mark_sent
 from emailer import send_email
-from filter import deduplicate, filter_and_categorize, categorize, cap_category, CATEGORY_SPECIFICITY
+from filter import deduplicate, filter_and_categorize, categorize, cap_category, ai_tag_articles, CATEGORY_SPECIFICITY
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
@@ -45,8 +45,8 @@ def push_to_curator(articles: list[dict], mode: str = "digest") -> None:
             matched_cats = categorize(article)
             if matched_cats:
                 a = dict(article)
-                # Use specificity order so Georgia & Southeast always wins
-                # over a broader category like Renewables
+                # Topic categories win; Georgia & Southeast US only when nothing else
+                # matches (regional relevance comes from the AI "southeast" flag)
                 a["category"] = next(
                     (c for c in CATEGORY_SPECIFICITY if c in matched_cats),
                     matched_cats[0],
@@ -60,6 +60,9 @@ def push_to_curator(articles: list[dict], mode: str = "digest") -> None:
             by_cat.setdefault(a["category"], []).append(a)
         to_push = [a for items in by_cat.values() for a in cap_category(items)]
         log.info(f"Category/source caps: {before} -> {len(to_push)} articles.")
+
+        # Relevance score + "southeast" flag for Delphi's AI-score sort and Southeast filter
+        ai_tag_articles(to_push)
 
         if not to_push:
             log.info("No keyword-matched articles to push to curator.")

@@ -1,5 +1,6 @@
 from collections import Counter
 from difflib import SequenceMatcher
+import json
 import logging
 import os
 import re
@@ -104,12 +105,14 @@ SOURCE_MAX_SHARE = 0.35    # no single source above this share of a category
 
 # Lower index = more specific. Articles in multiple categories
 # are kept only in the most specific one.
+# Most specific first. Georgia & Southeast US comes last: articles are filed by topic, and
+# the AI "southeast" flag (ai_tag_articles) marks regional relevance across all categories.
 CATEGORY_SPECIFICITY = [
-    "Georgia & Southeast US",
     "Nuclear",
     "Hydrocarbons",
     "AI & Data Centers",
     "Renewables",
+    "Georgia & Southeast US",
 ]
 
 
@@ -173,6 +176,57 @@ def categorize(article: dict) -> list[str]:
     # match_text: email-newsletter body (see aggregator.fetch_feed); empty for normal feeds
     text = f"{article.get('title', '')} {article.get('match_text', '')}".lower()
     return [cat for cat, pattern in _CATEGORY_PATTERNS.items() if pattern.search(text)]
+
+
+SOUTHEAST_STATES = ("Georgia, Alabama, Florida, South Carolina, North Carolina, Tennessee, "
+                    "Mississippi, Louisiana, Kentucky, Arkansas, Virginia")
+AI_TAG_BATCH = 20
+
+
+def ai_tag_articles(articles: list[dict]) -> None:
+    """Add ai_score (1-10 relevance) and southeast (bool) to each article in place, batched.
+    Batches that fail leave their articles untagged rather than blocking the push."""
+    api_key = os.environ.get("GROQ_API_KEY")
+    if not api_key or not articles:
+        return
+    from groq import Groq
+    client = Groq(api_key=api_key)
+    tagged = 0
+    for start in range(0, len(articles), AI_TAG_BATCH):
+        batch = articles[start:start + AI_TAG_BATCH]
+        lines = []
+        for i, a in enumerate(batch, 1):
+            context = (a.get("summary") or a.get("match_text") or "")[:300]
+            lines.append(f"{i}. {a['title']}" + (f" | {context}" if context else ""))
+        prompt = (
+            "You triage articles for an energy-security newsletter. For each numbered article give:\n"
+            "- score: 1-10 relevance to energy security, energy policy, grid/power, fuels, nuclear, "
+            "or data-center energy demand (7-10 = directly about these; 1-4 = unrelated or passing mention)\n"
+            "- southeast: true only if the article is substantially about the US Southeast "
+            f"({SOUTHEAST_STATES}): its utilities, projects, regulators, policy or communities. "
+            "A passing mention of a southeastern place is not enough.\n\n"
+            'Reply with JSON only: {"items": [{"n": 1, "score": 7, "southeast": false}, ...]}\n\n'
+            + "\n".join(lines)
+        )
+        try:
+            response = client.chat.completions.create(
+                model="openai/gpt-oss-120b",  # gpt-oss reasons first: needs token headroom
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=4000,
+                temperature=0,
+                response_format={"type": "json_object"},
+                extra_body={"reasoning_effort": "low"},
+            )
+            for item in json.loads(response.choices[0].message.content)["items"]:
+                n = int(item["n"])
+                if 1 <= n <= len(batch):
+                    batch[n - 1]["ai_score"] = min(max(int(item["score"]), 1), 10)
+                    batch[n - 1]["southeast"] = bool(item["southeast"])
+                    tagged += 1
+        except Exception as e:
+            log.warning(f"AI tagging failed for batch at {start}: {e}")
+        time.sleep(1)
+    log.info(f"AI tagging: {tagged}/{len(articles)} articles scored and region-tagged.")
 
 
 def score_article(title: str, category: str, client) -> int:

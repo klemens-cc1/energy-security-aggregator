@@ -78,4 +78,10 @@ assert len(k) == 1
 newest = cap_category([{"feed_name": "x", "published_at": "2026-10-01"}, {"feed_name": "x", "published_at": "2026-10-20"}])
 assert newest[0]["published_at"] == "2026-10-20"
 
+# Topic categories outrank Georgia & Southeast US (regional relevance comes from the AI flag)
+from filter import CATEGORY_SPECIFICITY
+pick = lambda title: next(c for c in CATEGORY_SPECIFICITY if c in cats(title))
+assert pick("Georgia Power data center deal") == "AI & Data Centers"
+assert pick("Georgia PSC approves Georgia Power rate case") == "Georgia & Southeast US"
+
 print("pipeline: all checks pass")
