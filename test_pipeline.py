@@ -84,4 +84,29 @@ pick = lambda title: next(c for c in CATEGORY_SPECIFICITY if c in cats(title))
 assert pick("Georgia Power data center deal") == "AI & Data Centers"
 assert pick("Georgia PSC approves Georgia Power rate case") == "Georgia & Southeast US"
 
+# AI tag responses: duplicates, out-of-range and malformed items are ignored, not trusted
+import json as _json
+from types import SimpleNamespace
+from filter import _tag_batch
+
+
+class FakeClient:
+    def __init__(self, items):
+        msg = SimpleNamespace(content=_json.dumps({"items": items}))
+        create = lambda **kw: SimpleNamespace(choices=[SimpleNamespace(message=msg)])
+        self.chat = SimpleNamespace(completions=SimpleNamespace(create=create))
+
+
+batch = [{"title": "a"}, {"title": "b"}, {"title": "c"}]
+_tag_batch(FakeClient([
+    {"n": 1, "score": 8, "southeast": True},
+    {"n": 1, "score": 10, "southeast": False},   # duplicate: ignored
+    {"n": 9, "score": 10, "southeast": True},    # out of range: ignored
+    {"n": 2, "score": 99, "southeast": "yes"},   # malformed flag: ignored
+    {"n": 3, "score": 99, "southeast": False},   # score clamped to 10
+]), batch)
+assert (batch[0]["ai_score"], batch[0]["southeast"]) == (8, True)
+assert "southeast" not in batch[1]
+assert batch[2]["ai_score"] == 10
+
 print("pipeline: all checks pass")
