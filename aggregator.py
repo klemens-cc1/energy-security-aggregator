@@ -3,6 +3,7 @@ import html
 import re
 import feedparser
 import yaml
+from urllib.parse import urlparse
 import logging
 from datetime import datetime, timezone, timedelta
 from db import init_db, is_seen, save_article
@@ -56,6 +57,9 @@ def fetch_feed(feed_config: dict) -> tuple[list[dict], bool]:
     url = feed_config["url"]
     category = feed_config.get("category", "")
     articles = []
+    host = urlparse(url).hostname or ""
+    is_google_news = host == "news.google.com"
+    is_email_newsletter = host == "kill-the-newsletter.com"
 
     log.info(f"Fetching: {name}")
     try:
@@ -79,7 +83,7 @@ def fetch_feed(feed_config: dict) -> tuple[list[dict], bool]:
             # for topic feeds ("Google News: LNG") credit the real outlet as the source.
             source_name = name
             publisher = (entry.get("source") or {}).get("title", "")
-            if "news.google.com" in url and publisher:
+            if is_google_news and publisher:
                 if title.endswith(f" - {publisher}"):
                     title = title[: -len(f" - {publisher}")].strip()
                 if name.startswith("Google News:"):
@@ -87,8 +91,9 @@ def fetch_feed(feed_config: dict) -> tuple[list[dict], bool]:
             # Email newsletters (Kill the Newsletter): subject lines rarely carry keywords,
             # so match on the email body instead; skip sign-up/verification mail.
             match_text = ""
-            if "kill-the-newsletter.com" in url:
-                if re.search(r"verification code|confirm|welcome to|verify your", title, re.I):
+            if is_email_newsletter:
+                # Sign-up mail only: "confirm" alone would also drop issues like "Senate to confirm FERC pick"
+                if re.search(r"verification code|confirm your|confirmation link|verify your|welcome to", title, re.I):
                     continue
                 body = " ".join(c.value for c in getattr(entry, "content", [])) or getattr(entry, "summary", "")
                 match_text = html.unescape(re.sub(r"<[^>]+>", " ", body))[:20000]
@@ -109,7 +114,7 @@ def fetch_feed(feed_config: dict) -> tuple[list[dict], bool]:
             if len(summary) < 60 or any(b in summary.lower() for b in _BOILERPLATE):
                 summary = ""
             # Google News search feeds only repeat "headline + publisher" as the summary
-            if "news.google.com" in url_:
+            if is_google_news:
                 summary = ""
             if len(summary) < 60:
                 summary = ""

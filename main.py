@@ -19,7 +19,7 @@ from datetime import datetime, timezone
 from aggregator import aggregate
 from db import get_unsent_articles, mark_sent
 from emailer import send_email
-from filter import deduplicate, filter_and_categorize, categorize, CATEGORY_SPECIFICITY
+from filter import deduplicate, filter_and_categorize, categorize, cap_category, CATEGORY_SPECIFICITY
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
@@ -52,6 +52,14 @@ def push_to_curator(articles: list[dict], mode: str = "digest") -> None:
                     matched_cats[0],
                 )
                 to_push.append(a)
+
+        # Per-category caps: max 40 per category, no source above 35% of it
+        before = len(to_push)
+        by_cat: dict = {}
+        for a in to_push:
+            by_cat.setdefault(a["category"], []).append(a)
+        to_push = [a for items in by_cat.values() for a in cap_category(items)]
+        log.info(f"Category/source caps: {before} -> {len(to_push)} articles.")
 
         if not to_push:
             log.info("No keyword-matched articles to push to curator.")

@@ -1,3 +1,4 @@
+from collections import Counter
 from difflib import SequenceMatcher
 import logging
 import os
@@ -98,6 +99,8 @@ CATEGORY_ORDER = [
 
 AI_RELEVANCE_THRESHOLD = 6
 AI_SCORE_LIMIT = 150
+CATEGORY_MAX = 40          # articles kept per category
+SOURCE_MAX_SHARE = 0.35    # no single source above this share of a category
 
 # Lower index = more specific. Articles in multiple categories
 # are kept only in the most specific one.
@@ -267,15 +270,35 @@ def ai_filter(categorized: dict) -> dict:
     return {k: v[:10] for k, v in filtered.items() if v}
 
 
+def cap_category(articles: list[dict]) -> list[dict]:
+    """Keep the newest articles: at most CATEGORY_MAX, and no source above SOURCE_MAX_SHARE
+    of what is kept. Each source may always keep 1, so a category with very few sources
+    stays small rather than empty (e.g. 2 sources -> 2 articles)."""
+    ranked = sorted(articles, key=lambda a: a.get("published_at") or "", reverse=True)
+    counts = Counter(a["feed_name"] for a in ranked)
+    per_source = lambda n: max(1, int(SOURCE_MAX_SHARE * n))
+    # Largest size n whose per-source limit can actually fill n slots
+    size = next((n for n in range(min(CATEGORY_MAX, len(ranked)), 0, -1)
+                 if sum(min(c, per_source(n)) for c in counts.values()) >= n), 0)
+    kept, used = [], Counter()
+    for a in ranked:
+        if len(kept) == size:
+            break
+        if used[a["feed_name"]] < per_source(size):
+            kept.append(a)
+            used[a["feed_name"]] += 1
+    return kept
+
+
 def filter_and_categorize(articles: list[dict]) -> dict:
     result: dict = {cat: [] for cat in CATEGORY_ORDER}
     for article in articles:
         for cat in categorize(article):
             result.setdefault(cat, []).append(article)
 
-    result = {k: v for k, v in result.items() if v}
+    result = {k: cap_category(v) for k, v in result.items() if v}
     total = sum(len(v) for v in result.values())
-    log.info(f"Keyword filter: {total} article slots across {len(result)} categories.")
+    log.info(f"Keyword filter: {total} article slots across {len(result)} categories (after source/category caps).")
 
     result = ai_filter(result)
     result = resolve_cross_category_duplicates(result)

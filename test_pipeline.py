@@ -51,4 +51,31 @@ with get_conn() as conn:  # fresh "seen" state for the second feed
 site, _ = aggregator.fetch_feed({"name": "CSIS Analysis", "url": GN})
 assert [(a["title"], a["feed_name"]) for a in site] == [("Qatar agrees to buy US LNG", "CSIS Analysis")]
 
+# Category caps: max 40 per category, no source above 35% of what's kept, newest first
+from collections import Counter
+from filter import cap_category
+
+
+def arts(spec):  # {"source": count} -> articles with distinct, descending dates
+    out, i = [], 0
+    for src, n in spec.items():
+        for _ in range(n):
+            out.append({"feed_name": src, "published_at": f"2026-10-{28 - i % 28:02d}T{i % 24:02d}:00:00+00:00"})
+            i += 1
+    return out
+
+
+def share_ok(kept):
+    return max(Counter(a["feed_name"] for a in kept).values()) <= 0.35 * len(kept)
+
+
+k = cap_category(arts({f"s{i}": 5 for i in range(20)}))          # plenty of sources
+assert len(k) == 40 and share_ok(k)
+k = cap_category(arts({"Reuters": 40, "WSJ": 10, "FT": 10}))      # one dominant source
+assert len(k) == 30 and share_ok(k)
+k = cap_category(arts({"GPB": 5}))                                # single source keeps 1
+assert len(k) == 1
+newest = cap_category([{"feed_name": "x", "published_at": "2026-10-01"}, {"feed_name": "x", "published_at": "2026-10-20"}])
+assert newest[0]["published_at"] == "2026-10-20"
+
 print("pipeline: all checks pass")
