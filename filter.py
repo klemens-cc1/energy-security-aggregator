@@ -173,9 +173,12 @@ _CATEGORY_PATTERNS = {cat: _keyword_pattern(kws) for cat, kws in CATEGORIES.item
 
 
 def categorize(article: dict) -> list[str]:
-    # match_text: email-newsletter body (see aggregator.fetch_feed); empty for normal feeds
-    text = f"{article.get('title', '')} {article.get('match_text', '')}".lower()
-    return [cat for cat, pattern in _CATEGORY_PATTERNS.items() if pattern.search(text)]
+    # match_text: email-newsletter body (see aggregator.fetch_feed); empty for normal feeds.
+    # A body needs 2+ hits so one passing mention in a general newsletter doesn't count.
+    title = article.get("title", "").lower()
+    body = article.get("match_text", "").lower()
+    return [cat for cat, p in _CATEGORY_PATTERNS.items()
+            if p.search(title) or len(p.findall(body)) >= 2]
 
 
 SOUTHEAST_STATES = ("Georgia, Alabama, Florida, South Carolina, North Carolina, Tennessee, "

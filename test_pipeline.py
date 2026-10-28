@@ -27,7 +27,8 @@ assert cats("Rooftop PV installs climb") == ["Renewables"]
 
 # Email newsletters match on the body
 assert cats("Axios Generate: Tuesday") == []
-assert "AI & Data Centers" in cats("Axios Generate: Tuesday", "PJM says data center load is rising")
+assert "AI & Data Centers" in cats("Axios Generate: Tuesday", "PJM says data center load is rising as data centers sign on")
+assert "AI & Data Centers" not in cats("AJC Morning", "Falcons win; a data center opens in Fayette; school news")
 
 
 # Google News feeds: strip " - Publisher" from titles; topic feeds credit the outlet
