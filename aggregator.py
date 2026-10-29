@@ -51,6 +51,28 @@ def is_recent(published: datetime | None) -> bool:
     return published >= cutoff
 
 
+_SECOND_LEVEL = {"co", "com", "org", "net", "ac", "gov", "edu"}
+
+
+def newsletter_url(body: str, sender: str) -> str:
+    """Public link for an email issue. Never the Kill the Newsletter entry URL: it contains
+    the private inbox ID, and Delphi's article list is public."""
+    # Axios "View in browser" is a click-tracker wrapping the base64 issue URL
+    m = re.search(r'href="https://link\.axios\.com/click/[^/"]+/([A-Za-z0-9_-]+)[^"]*"[^>]*>\s*View in browser', body)
+    if m:
+        seg = m.group(1)
+        try:
+            return base64.urlsafe_b64decode(seg + "=" * (-len(seg) % 4)).decode().split("?")[0]
+        except ValueError:
+            pass
+    # Otherwise the publisher's site, from the sender domain (em1211.semafor.com -> semafor.com,
+    # mail.ft.co.uk -> ft.co.uk). Country TLDs often sit under co./com./org. etc.
+    labels = sender.rpartition("@")[2].lower().split(".")
+    keep = 3 if len(labels) >= 3 and len(labels[-1]) == 2 and labels[-2] in _SECOND_LEVEL else 2
+    domain = ".".join(labels[-keep:])
+    return f"https://www.{domain}/" if "." in domain else ""
+
+
 def fetch_feed(feed_config: dict) -> tuple[list[dict], bool]:
     """Returns (articles, success) where success=False means the feed failed."""
     name = feed_config["name"]
@@ -97,6 +119,7 @@ def fetch_feed(feed_config: dict) -> tuple[list[dict], bool]:
                     continue
                 body = " ".join(c.value for c in getattr(entry, "content", [])) or getattr(entry, "summary", "")
                 match_text = html.unescape(re.sub(r"<[^>]+>", " ", body))[:20000]
+                url_ = newsletter_url(body, entry.get("author_detail", {}).get("email", ""))
             pub_str = published.isoformat() if published else ""
             # Pull RSS summary and strip any HTML tags
             raw_summary = getattr(entry, "summary", "") or ""

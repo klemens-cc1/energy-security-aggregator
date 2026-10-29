@@ -192,10 +192,11 @@ def main():
     log.info(f"Running in mode: {mode}")
 
     # 1. Fetch new articles from all feeds and store in DB
-    aggregate()
+    fetched = {a["guid"]: a for a in aggregate()}
 
-    # 2. Get all articles not yet sent
-    articles = get_unsent_articles()
+    # 2. Get all articles not yet sent; the DB only stores core columns, so re-attach
+    #    summary and match_text (email-newsletter body) from this run's fetch
+    articles = [{**fetched.get(r["guid"], {}), **r} for r in get_unsent_articles()]
     raw_count = len(articles)
     log.info(f"{raw_count} unsent articles ready.")
 

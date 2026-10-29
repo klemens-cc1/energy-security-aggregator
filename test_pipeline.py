@@ -1,4 +1,6 @@
 """Run: python test_pipeline.py"""
+import os, tempfile
+os.environ["DB_PATH"] = os.path.join(tempfile.mkdtemp(), "test.db")  # before db is imported: never touch articles.db
 from filter import categorize
 
 
@@ -30,10 +32,19 @@ assert cats("Axios Generate: Tuesday") == []
 assert "AI & Data Centers" in cats("Axios Generate: Tuesday", "PJM says data center load is rising as data centers sign on")
 assert "AI & Data Centers" not in cats("AJC Morning", "Falcons win; a data center opens in Fayette; school news")
 
+# Newsletter links never expose the Kill the Newsletter inbox: Axios decodes, others get the publisher site
+from aggregator import newsletter_url
+import base64 as _b64
+_seg = _b64.urlsafe_b64encode(b"https://www.axios.com/newsletters/x.html?utm_source=newsletter").decode().rstrip("=")
+assert newsletter_url(f'<a href="https://link.axios.com/click/1.2/{_seg}/abc">View in browser</a>', "d@mailer.axios.com") == "https://www.axios.com/newsletters/x.html"
+assert newsletter_url('<a href="https://kill-the-newsletter.com/feeds/SECRET">x</a>', "b@em1211.semafor.com") == "https://www.semafor.com/"
+assert newsletter_url("", "") == ""
+assert newsletter_url("", "n@mail.ft.co.uk") == "https://www.ft.co.uk/"
+assert newsletter_url("", "n@news.abc.net.au") == "https://www.abc.net.au/"
+assert newsletter_url("", "n@mail.x.ai") == "https://www.x.ai/"  # 2-letter TLD, not a second level
+
 
 # Google News feeds: strip " - Publisher" from titles; topic feeds credit the outlet
-import os, tempfile
-os.environ["DB_PATH"] = os.path.join(tempfile.mkdtemp(), "test.db")
 import feedparser
 import aggregator
 from db import get_conn, init_db
