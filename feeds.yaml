@@ -148,7 +148,7 @@ feeds:
     url: "https://heatmap.news/feeds/feed.rss"
 
   - name: Oxford Institute for Energy Studies
-    url: "https://www.oxfordenergy.org/publications/feed/"
+    url: "https://news.google.com/rss/search?q=site:oxfordenergy.org/publications+when:7d&hl=en-US&gl=US&ceid=US:en"
 
   - name: GPB News
     url: "https://www.gpb.org/rss.xml"
