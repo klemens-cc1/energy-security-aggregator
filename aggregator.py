@@ -62,7 +62,9 @@ def newsletter_url(body: str, sender: str) -> str:
     if m:
         seg = m.group(1)
         try:
-            return base64.urlsafe_b64decode(seg + "=" * (-len(seg) % 4)).decode().split("?")[0]
+            decoded = base64.urlsafe_b64decode(seg + "=" * (-len(seg) % 4)).decode().split("?")[0]
+            if re.fullmatch(r"https://www\.axios\.com/[\w./-]*", decoded):  # inbox mail is untrusted
+                return decoded
         except ValueError:
             pass
     # Otherwise the publisher's site, from the sender domain (em1211.semafor.com -> semafor.com,
@@ -70,7 +72,7 @@ def newsletter_url(body: str, sender: str) -> str:
     labels = sender.rpartition("@")[2].lower().split(".")
     keep = 3 if len(labels) >= 3 and len(labels[-1]) == 2 and labels[-2] in _SECOND_LEVEL else 2
     domain = ".".join(labels[-keep:])
-    return f"https://www.{domain}/" if "." in domain else ""
+    return f"https://www.{domain}/" if re.fullmatch(r"[a-z0-9-]+(\.[a-z0-9-]+)+", domain) else ""
 
 
 def fetch_feed(feed_config: dict) -> tuple[list[dict], bool]:

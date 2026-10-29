@@ -39,6 +39,8 @@ _seg = _b64.urlsafe_b64encode(b"https://www.axios.com/newsletters/x.html?utm_sou
 assert newsletter_url(f'<a href="https://link.axios.com/click/1.2/{_seg}/abc">View in browser</a>', "d@mailer.axios.com") == "https://www.axios.com/newsletters/x.html"
 assert newsletter_url('<a href="https://kill-the-newsletter.com/feeds/SECRET">x</a>', "b@em1211.semafor.com") == "https://www.semafor.com/"
 assert newsletter_url("", "") == ""
+_bad = _b64.urlsafe_b64encode(b"javascript:alert(1)").decode().rstrip("=")
+assert newsletter_url(f'<a href="https://link.axios.com/click/1.2/{_bad}/abc">View in browser</a>', "d@mailer.axios.com") == "https://www.axios.com/"
 assert newsletter_url("", "n@mail.ft.co.uk") == "https://www.ft.co.uk/"
 assert newsletter_url("", "n@news.abc.net.au") == "https://www.abc.net.au/"
 assert newsletter_url("", "n@mail.x.ai") == "https://www.x.ai/"  # 2-letter TLD, not a second level

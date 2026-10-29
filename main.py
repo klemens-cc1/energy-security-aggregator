@@ -24,6 +24,8 @@ from filter import deduplicate, filter_and_categorize, categorize, cap_category,
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger(__name__)
 
+MIN_AI_SCORE = 4  # the tagging prompt's 1-4 band is "unrelated or passing mention"
+
 
 def push_to_curator(articles: list[dict], mode: str = "digest") -> None:
     """Push keyword-matched articles to the curator web app (pre-AI-filter)."""
@@ -63,6 +65,11 @@ def push_to_curator(articles: list[dict], mode: str = "digest") -> None:
 
         # Relevance score + "southeast" flag for Delphi's AI-score sort and Southeast filter
         ai_tag_articles(to_push)
+        # Drop what the AI calls unrelated (keyword hits like a "Georgia Power crews clear
+        # scene" traffic story); untagged articles are kept
+        before = len(to_push)
+        to_push = [a for a in to_push if a.get("ai_score", MIN_AI_SCORE) >= MIN_AI_SCORE]
+        log.info(f"AI score filter (< {MIN_AI_SCORE}): {before} -> {len(to_push)} articles.")
 
         if not to_push:
             log.info("No keyword-matched articles to push to curator.")
